@@ -1,0 +1,267 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: var(--app-font, "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --shadow-elegant: 0 1px 2px 0 oklch(0 0 0 / 0.4), 0 8px 24px -8px oklch(0 0 0 / 0.5);
+  --shadow-subtle: 0 1px 0 0 oklch(1 0 0 / 0.03) inset, 0 1px 2px 0 oklch(0 0 0 / 0.3);
+}
+
+:root,
+.dark {
+  --radius: 0.75rem;
+  --background: oklch(0.16 0.005 260);
+  --foreground: oklch(0.96 0.003 260);
+  --surface: oklch(0.185 0.005 260);
+  --surface-elevated: oklch(0.215 0.006 260);
+  --card: oklch(0.19 0.005 260);
+  --card-foreground: oklch(0.96 0.003 260);
+  --popover: oklch(0.21 0.006 260);
+  --popover-foreground: oklch(0.96 0.003 260);
+  --primary: oklch(0.96 0.003 260);
+  --primary-foreground: oklch(0.16 0.005 260);
+  --secondary: oklch(0.235 0.006 260);
+  --secondary-foreground: oklch(0.96 0.003 260);
+  --muted: oklch(0.235 0.006 260);
+  --muted-foreground: oklch(0.66 0.01 260);
+  --accent: var(--accent-color, oklch(0.72 0.14 250));
+  --accent-foreground: oklch(0.98 0 0);
+  --destructive: oklch(0.62 0.2 25);
+  --destructive-foreground: oklch(0.98 0 0);
+  --border: oklch(1 0 0 / 6%);
+  --border-strong: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 8%);
+  --ring: var(--accent-color, oklch(0.72 0.14 250));
+  --sidebar: oklch(0.145 0.005 260);
+  --sidebar-foreground: oklch(0.88 0.005 260);
+  --sidebar-primary: oklch(0.96 0.003 260);
+  --sidebar-primary-foreground: oklch(0.16 0.005 260);
+  --sidebar-accent: oklch(0.22 0.006 260);
+  --sidebar-accent-foreground: oklch(0.96 0.003 260);
+  --sidebar-border: oklch(1 0 0 / 5%);
+  --sidebar-ring: var(--accent-color, oklch(0.72 0.14 250));
+}
+
+.light {
+  --background: oklch(0.99 0.002 260);
+  --foreground: oklch(0.18 0.005 260);
+  --surface: oklch(0.975 0.003 260);
+  --surface-elevated: oklch(1 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.18 0.005 260);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.18 0.005 260);
+  --primary: oklch(0.22 0.005 260);
+  --primary-foreground: oklch(0.98 0 0);
+  --secondary: oklch(0.955 0.004 260);
+  --secondary-foreground: oklch(0.2 0.005 260);
+  --muted: oklch(0.955 0.004 260);
+  --muted-foreground: oklch(0.48 0.01 260);
+  --accent: var(--accent-color, oklch(0.6 0.16 250));
+  --accent-foreground: oklch(0.98 0 0);
+  --destructive: oklch(0.58 0.22 25);
+  --destructive-foreground: oklch(0.98 0 0);
+  --border: oklch(0 0 0 / 8%);
+  --border-strong: oklch(0 0 0 / 14%);
+  --input: oklch(0 0 0 / 6%);
+  --ring: var(--accent-color, oklch(0.6 0.16 250));
+  --sidebar: oklch(0.965 0.003 260);
+  --sidebar-foreground: oklch(0.22 0.005 260);
+  --sidebar-primary: oklch(0.22 0.005 260);
+  --sidebar-primary-foreground: oklch(0.98 0 0);
+  --sidebar-accent: oklch(0.93 0.004 260);
+  --sidebar-accent-foreground: oklch(0.2 0.005 260);
+  --sidebar-border: oklch(0 0 0 / 7%);
+  --sidebar-ring: var(--accent-color, oklch(0.6 0.16 250));
+}
+
+/* Density */
+.density-compact { --density-scale: 0.92; font-size: 13px; }
+.density-comfortable { --density-scale: 1; font-size: 14px; }
+.density-spacious { --density-scale: 1.08; font-size: 15px; }
+
+/* Font families */
+.font-inter { --app-font: "Inter", ui-sans-serif, system-ui, sans-serif; }
+.font-mono { --app-font: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+.font-serif { --app-font: ui-serif, Georgia, "Times New Roman", serif; }
+
+/* Reduced motion */
+.reduce-motion *, .reduce-motion *::before, .reduce-motion *::after {
+  animation-duration: 0.001ms !important;
+  transition-duration: 0.001ms !important;
+}
+
+/* Chat container width */
+:root { --arch-chat-max-w: 48rem; --arch-msg-font-size: 14.5px; }
+.chat-compact { --arch-chat-max-w: 36rem; }
+.chat-normal  { --arch-chat-max-w: 48rem; }
+.chat-wide    { --arch-chat-max-w: 68rem; }
+.arch-chat-container { max-width: var(--arch-chat-max-w); }
+
+/* Message font size */
+.msg-sm { --arch-msg-font-size: 13px; }
+.msg-md { --arch-msg-font-size: 14.5px; }
+.msg-lg { --arch-msg-font-size: 16px; }
+.msg-xl { --arch-msg-font-size: 18px; }
+.arch-msg-text { font-size: var(--arch-msg-font-size); }
+
+/* Radius (UI roundness) — overrides --radius */
+.radius-sharp   { --radius: 0.125rem; }
+.radius-soft    { --radius: 0.75rem; }
+.radius-rounded { --radius: 1.25rem; }
+.radius-pill    { --radius: 1.75rem; }
+
+/* Sidebar collapsed default state */
+.sidebar-collapsed .arch-sidebar-desktop { display: none !important; }
+
+/* Code theme (independent of app theme) */
+.code-dark pre, .code-dark code:not(pre code) {
+  background: oklch(0.18 0.005 260);
+  color: oklch(0.94 0.005 260);
+  border: 1px solid oklch(1 0 0 / 8%);
+}
+.code-light pre, .code-light code:not(pre code) {
+  background: oklch(0.97 0.003 260);
+  color: oklch(0.2 0.005 260);
+  border: 1px solid oklch(0 0 0 / 8%);
+}
+pre { padding: 0.75rem 1rem; border-radius: var(--radius-md); overflow-x: auto; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 13px; }
+code:not(pre code) { padding: 0.15rem 0.35rem; border-radius: var(--radius-sm); font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 0.9em; }
+
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  html,
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  html.dark { color-scheme: dark; }
+  html.light { color-scheme: light; }
+}
+
+/* Aurora glow for user messages sent with web search / deep research */
+@keyframes arch-aurora-spin {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.arch-aurora {
+  position: relative;
+  border-radius: 1.5rem;
+  padding: 1.5px;
+  background: linear-gradient(
+    120deg,
+    oklch(0.78 0.15 190) 0%,
+    oklch(0.82 0.14 150) 25%,
+    oklch(0.85 0.16 90) 50%,
+    oklch(0.78 0.17 30) 75%,
+    oklch(0.75 0.18 340) 100%
+  );
+  background-size: 300% 300%;
+  animation: arch-aurora-spin 6s ease-in-out infinite;
+  box-shadow: 0 0 24px -6px oklch(0.78 0.15 190 / 0.35),
+              0 0 40px -10px oklch(0.78 0.17 30 / 0.25);
+}
+.arch-aurora > .arch-aurora-inner {
+  border-radius: calc(1.5rem - 1.5px);
+  background: var(--secondary);
+}
+
+/* Assistant markdown formatting */
+.arch-markdown { font-size: 14.5px; line-height: 1.7; color: hsl(var(--foreground) / 0.95); }
+.arch-markdown > * + * { margin-top: 0.85em; }
+.arch-markdown p { margin: 0; }
+.arch-markdown strong { font-weight: 600; color: var(--foreground); }
+.arch-markdown em { font-style: italic; }
+.arch-markdown h1, .arch-markdown h2, .arch-markdown h3 {
+  font-weight: 600; letter-spacing: -0.01em; margin-top: 1.2em;
+}
+.arch-markdown h1 { font-size: 1.35em; }
+.arch-markdown h2 { font-size: 1.18em; }
+.arch-markdown h3 { font-size: 1.05em; }
+.arch-markdown ul, .arch-markdown ol { padding-left: 1.35em; margin: 0; }
+.arch-markdown ul { list-style: disc; }
+.arch-markdown ol { list-style: decimal; }
+.arch-markdown li { margin: 0.35em 0; }
+.arch-markdown li::marker { color: var(--muted-foreground); }
+.arch-markdown li > p { display: inline; }
+.arch-markdown a { color: var(--primary); text-decoration: underline; text-underline-offset: 2px; }
+.arch-markdown a:hover { opacity: 0.85; }
+.arch-markdown code {
+  background: var(--surface-elevated); padding: 0.1em 0.4em; border-radius: 6px;
+  font-size: 0.9em; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.arch-markdown pre {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 0.85em 1em; overflow-x: auto;
+}
+.arch-markdown pre code { background: transparent; padding: 0; font-size: 0.88em; }
+.arch-markdown blockquote {
+  border-left: 2px solid var(--border-strong);
+  padding-left: 0.9em; color: hsl(var(--muted-foreground));
+}
+.arch-markdown hr { border: 0; border-top: 1px solid var(--border); margin: 1.2em 0; }
+.arch-markdown table { border-collapse: collapse; width: 100%; font-size: 0.95em; }
+.arch-markdown th, .arch-markdown td { border: 1px solid var(--border); padding: 0.5em 0.75em; text-align: left; }
+.arch-markdown th { background: var(--surface); font-weight: 600; }
+.arch-markdown sub { font-size: 0.78em; color: hsl(var(--muted-foreground)); }
+
+/* Hide the injected "Edit with Lovable" badge without affecting layout.
+   The badge is position:fixed, so removing it reflows nothing. */
+#lovable-badge,
+#lovable-badge-container,
+[id^="lovable-badge"],
+a[href*="lovable.dev/projects"],
+a[href*="lovable.dev/?utm"],
+a[aria-label*="Edit with Lovable" i],
+a[title*="Edit with Lovable" i] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
