@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 
-export type ThemeMode = "dark" | "light" | "system";
+export type ThemeMode = "dark" | "light" | "studio" | "system";
 export type Density = "compact" | "comfortable" | "spacious";
 export type AccentName = "blue" | "violet" | "emerald" | "amber" | "rose";
 export type FontName = "inter" | "mono" | "serif";
@@ -48,11 +48,13 @@ const ACCENT_COLORS: Record<AccentName, string> = {
 
 const LS_KEY = "arch-appearance";
 
-function resolveTheme(mode: ThemeMode): "dark" | "light" {
+function resolveTheme(mode: ThemeMode): "dark" | "light" | "studio" {
   if (mode === "system" && typeof window !== "undefined") {
     return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   }
-  return mode === "light" ? "light" : "dark";
+  if (mode === "light") return "light";
+  if (mode === "studio") return "studio";
+  return "dark";
 }
 
 export function applyAppearance(a: Appearance) {
@@ -61,6 +63,7 @@ export function applyAppearance(a: Appearance) {
   const resolved = resolveTheme(a.theme);
   root.classList.toggle("dark", resolved === "dark");
   root.classList.toggle("light", resolved === "light");
+  root.classList.toggle("studio", resolved === "studio");
   root.classList.remove("density-compact", "density-comfortable", "density-spacious");
   root.classList.add(`density-${a.density}`);
   root.classList.remove("font-inter", "font-mono", "font-serif");

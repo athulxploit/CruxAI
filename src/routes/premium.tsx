@@ -11,8 +11,12 @@ import { checkPromoCode, redeemPromoCode } from "@/lib/promo.functions";
 export const Route = createFileRoute("/premium")({
   head: () => ({
     meta: [
-      { title: "Upgrade to Premium — Metrixcom" },
-      { name: "description", content: "Choose a premium plan for Metrixcom." },
+      { title: "Metrixcom Premium — Power Your AI Workflow" },
+      { name: "description", content: "Upgrade to Metrixcom Pro or Pro+ for advanced agents, higher usage limits, and exclusive professional engineering tools." },
+      { property: "og:title", content: "Upgrade to Metrixcom Premium" },
+      { property: "og:description", content: "Unlock the full power of the Metrixcom Engine with a premium subscription." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: PremiumPage,
@@ -210,6 +214,7 @@ function PremiumPage() {
         </div>
 
 
+        <h2 className="sr-only">Available Subscription Plans</h2>
         {plans.length === 0 ? (
           <div className="text-center text-sm text-muted-foreground py-20">
             No plans available yet.

@@ -109,6 +109,7 @@ function FilesPage() {
         className="hidden"
         onChange={(e) => handleUpload(e.target.files)}
       />
+      <div className="min-h-0 -webkit-overflow-scrolling-touch pointer-events-auto">
       <div
         ref={dropRef}
         onClick={() => inputRef.current?.click()}
@@ -180,6 +181,7 @@ function FilesPage() {
             ))}
           </div>
         )}
+      </div>
       </div>
     </PageShell>
   );

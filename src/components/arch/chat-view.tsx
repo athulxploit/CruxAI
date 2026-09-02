@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useApp, store, type Message } from "@/lib/app-store";
 import { loadIntelligence, subscribeIntelligence, type IntelligencePrefs } from "@/lib/intelligence";
-import { getAgent } from "@/lib/agents";
 import { ArchLogo } from "./logo";
 import {
   ChevronDown, ChevronUp, Globe, Loader2, Check, Telescope, Pencil, Copy,
-  ThumbsUp, ThumbsDown, Share2, RefreshCw, Brain, X, Link2, Sparkles,
+  ThumbsUp, ThumbsDown, Share2, RefreshCw, Brain, X, Link2, Sparkles, ArrowUp,
+  Image as ImageIcon
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -14,6 +15,10 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { parseFileBlocks } from "@/lib/file-gen";
 import { FileArtifacts } from "./file-artifacts";
+import { cn } from "@/lib/utils";
+import { getFriendlyName, getModelEntry } from "@/lib/model-registry";
+import { ModelIcon } from "./model-icon";
+
 
 function CodeBlock({ language, value }: { language: string; value: string }) {
   const [copied, setCopied] = useState(false);
@@ -332,16 +337,66 @@ function renderWithMCQ(text: string): RenderPart[] {
 
 
 export function ChatView() {
+  const [selection, setSelection] = useState<{ text: string; x: number; y: number } | null>(null);
+  const [replayValue, setReplayValue] = useState("");
+  const [isReplaying, setIsReplaying] = useState(false);
+  const replayRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleMouseUp = (e: MouseEvent) => {
+      // Don't trigger if clicking inside the replay popup itself
+      if (replayRef.current?.contains(e.target as Node)) return;
+
+      const sel = window.getSelection();
+      const text = sel?.toString().trim();
+      
+      if (text && text.length > 0) {
+        const range = sel?.getRangeAt(0);
+        const rect = range?.getBoundingClientRect();
+        if (rect) {
+          setSelection({
+            text,
+            x: rect.left + rect.width / 2,
+            y: rect.top + window.scrollY - 10
+          });
+        }
+      } else {
+        if (!isReplaying) setSelection(null);
+      }
+    };
+
+    document.addEventListener("mouseup", handleMouseUp);
+    return () => document.removeEventListener("mouseup", handleMouseUp);
+  }, [isReplaying]);
+
+  function handleReplay() {
+    if (!selection) return;
+    const text = replayValue.trim();
+    if (!text) return;
+    
+    store.sendMessage(text, { 
+      mode: null, 
+      contextSelection: selection.text 
+    });
+    
+    setReplayValue("");
+    setSelection(null);
+    setIsReplaying(false);
+  }
+
   const activeId = useApp((s) => s.activeChatId);
   const chats = useApp((s) => s.chats);
-  const agentId = useApp((s) => s.agent);
-  const agent = getAgent(agentId);
   const chat = chats.find((c) => c.id === activeId);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+    if (chat?.messages.length) {
+      window.requestAnimationFrame(() => {
+        scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+      });
+    }
   }, [chat?.messages.length]);
 
   useEffect(() => {
@@ -362,29 +417,32 @@ export function ChatView() {
 
   if (!chat || chat.messages.length === 0) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center px-6">
-        <ArchLogo size={40} className="mb-6 [&>span]:text-[22px]" />
-        <h1 className="text-[26px] font-semibold tracking-tight text-center">
-          How can I help today?
-        </h1>
-        <p className="mt-2 text-[13.5px] text-muted-foreground text-center">
-          {agent.name} · {agent.tagline}
-        </p>
-        <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-2xl">
-          {[
-            "Summarize a long research paper",
-            "Draft a product launch email",
-            "Explain a concept simply",
-            "Plan a two-week roadmap",
-          ].map((s) => (
-            <button
-              key={s}
-              onClick={() => store.sendMessage(s)}
-              className="text-left rounded-xl border border-border bg-surface hover:bg-surface-elevated hover:border-border-strong transition-colors px-4 py-3 text-[13px] text-foreground/90"
-            >
-              {s}
-            </button>
-          ))}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden w-full h-full">
+        <div className="flex min-h-full flex-col items-center justify-center px-6 py-12 md:py-24">
+          <ArchLogo size={isMobile ? 32 : 40} className="mb-6 [&>span]:text-[22px]" />
+          <h1 className="text-[22px] md:text-[26px] font-semibold tracking-tight text-center px-4">
+            How can I help today?
+          </h1>
+          <p className="mt-2 text-[12.5px] md:text-[13.5px] text-muted-foreground text-center">
+            GPT-5 Flagship Series · Unified Intelligence
+          </p>
+
+          <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-2xl">
+            {[
+              "Summarize a long research paper",
+              "Draft a product launch email",
+              "Explain a concept simply",
+              "Plan a two-week roadmap",
+            ].map((s) => (
+              <button
+                key={s}
+                onClick={() => store.sendMessage(s)}
+                className="text-left rounded-xl border border-border bg-surface hover:bg-surface-elevated hover:border-border-strong transition-colors px-4 py-3 text-[13px] text-foreground/90"
+              >
+                {s}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -393,9 +451,9 @@ export function ChatView() {
   const pendingId = chat.pendingUserId;
 
   return (
-    <div className="relative flex-1 min-h-0">
-      <div ref={scrollRef} className="absolute inset-0 overflow-y-auto">
-        <div className="arch-chat-container arch-msg-text mx-auto px-4 sm:px-6 py-8 space-y-5">
+    <div className="flex-1 flex flex-col min-h-0 relative w-full h-full">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-hidden scroll-smooth h-full -webkit-overflow-scrolling-touch">
+        <div className="arch-chat-container arch-msg-text mx-auto px-4 md:px-6 lg:px-8 py-8 space-y-5">
           {chat.messages.map((m) => {
             const aurora = m.role === "user" && m.mode && pendingId === m.id;
             return m.role === "user" ? (
@@ -416,10 +474,127 @@ export function ChatView() {
       >
         <ChevronDown className="h-4 w-4" />
       </button>
+
+      {selection && (
+        <div 
+          ref={replayRef}
+          style={{ 
+            left: `${selection.x}px`, 
+            top: `${selection.y}px`,
+            transform: 'translate(-50%, -100%)'
+          }}
+          className="fixed z-[100] animate-in fade-in zoom-in duration-200"
+        >
+          {!isReplaying ? (
+            <button
+              onClick={() => setIsReplaying(true)}
+              className="flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-[12px] font-medium text-primary-foreground shadow-xl hover:bg-primary/90 transition-all border border-primary/20"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Replay
+            </button>
+          ) : (
+            <div className="w-72 md:w-80 rounded-2xl border border-border bg-surface/95 backdrop-blur-md shadow-2xl p-3 flex flex-col gap-2 duration-150 ease-out animate-in slide-in-from-bottom-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <RefreshCw className="h-3 w-3" />
+                  Replay Context
+                </div>
+                <button 
+                  onClick={() => { setIsReplaying(false); setSelection(null); }}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              <div className="max-h-20 overflow-y-auto text-[12px] text-foreground/70 bg-secondary/50 rounded-lg p-2 italic border border-border/50">
+                "{selection.text}"
+              </div>
+              <div className="relative">
+                <textarea
+                  autoFocus
+                  value={replayValue}
+                  onChange={(e) => setReplayValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleReplay();
+                    }
+                    if (e.key === "Escape") {
+                      setIsReplaying(false);
+                      setSelection(null);
+                    }
+                  }}
+                  placeholder="Ask about this selection..."
+                  className="w-full bg-secondary/80 border border-border rounded-xl px-3 py-2 text-[13.5px] focus:outline-none focus:border-primary/50 resize-none h-20"
+                />
+                <button
+                  onClick={handleReplay}
+                  disabled={!replayValue.trim()}
+                  className="absolute right-2 bottom-2 p-1.5 rounded-lg bg-primary text-primary-foreground disabled:opacity-50 hover:bg-primary/90 transition-colors"
+                >
+                  <ArrowUp className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
+
+function PersistedImage({ attachment }: { attachment: any }) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    async function load() {
+      try {
+        const { data, error } = await supabase.storage
+          .from("user-files")
+          .createSignedUrl(attachment.path, 3600);
+        if (!mounted) return;
+        if (error) throw error;
+        setUrl(data.signedUrl);
+      } catch (err) {
+        console.error("Failed to load image:", err);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+    load();
+    return () => { mounted = false; };
+  }, [attachment.path]);
+
+  return (
+    <div className="relative group/img aspect-square overflow-hidden rounded-xl border border-white/10 bg-black/20 shadow-lg transition-transform hover:scale-[1.02]">
+      {loading ? (
+        <div className="flex h-full w-full items-center justify-center">
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+        </div>
+      ) : url ? (
+        <>
+          <img 
+            src={url} 
+            alt={attachment.name}
+            className="h-full w-full object-cover"
+            loading="lazy"
+          />
+          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
+            <span className="text-[10px] text-white font-medium bg-black/60 px-2 py-0.5 rounded-full backdrop-blur-sm">View</span>
+          </div>
+        </>
+      ) : (
+        <div className="flex h-full w-full items-center justify-center">
+          <ImageIcon className="h-5 w-5 text-muted-foreground/30" />
+        </div>
+      )}
+    </div>
+  );
+}
 
 function UserMessage({ m, aurora }: { m: Message; aurora: boolean }) {
   const [editing, setEditing] = useState(false);
@@ -502,7 +677,7 @@ function UserMessage({ m, aurora }: { m: Message; aurora: boolean }) {
 
   return (
     <div className="group flex justify-end">
-      <div className="flex flex-col items-end max-w-[80%]">
+      <div className="flex flex-col items-end max-w-[90%] md:max-w-[80%]">
         {aurora ? (
           <div className="arch-aurora">
             <div className="arch-aurora-inner px-4 py-2.5 text-[14.5px] leading-relaxed whitespace-pre-wrap text-foreground">
@@ -510,29 +685,40 @@ function UserMessage({ m, aurora }: { m: Message; aurora: boolean }) {
             </div>
           </div>
         ) : (
-          <div className="rounded-3xl bg-secondary text-foreground px-4 py-2.5 text-[14.5px] leading-relaxed whitespace-pre-wrap">
+          <div className="rounded-[20px] md:rounded-3xl bg-secondary text-foreground px-4 py-2.5 text-[14.5px] leading-relaxed whitespace-pre-wrap">
             {m.content}
+            {m.attachments && m.attachments.length > 0 && (
+              <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-2 w-full max-w-[400px]">
+                {m.attachments.map((a, i) => {
+                  const isImage = a.mime?.startsWith("image/");
+                  if (!isImage) return null;
+                  return (
+                    <PersistedImage key={i} attachment={a} />
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
-        <div className="mt-1 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="mt-1 flex items-center gap-0.5 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
           <button
             onClick={() => {
               setDraft(m.content);
               setEditing(true);
             }}
-            className="rounded-md p-1.5 text-muted-foreground hover:bg-surface-elevated hover:text-foreground transition-colors"
+            className="rounded-md p-2 md:p-1.5 text-muted-foreground hover:bg-surface-elevated hover:text-foreground transition-colors"
             aria-label="Edit message"
             title="Edit"
           >
-            <Pencil className="h-3.5 w-3.5" />
+            <Pencil className="h-4 w-4 md:h-3.5 md:w-3.5" />
           </button>
           <button
             onClick={copy}
-            className="rounded-md p-1.5 text-muted-foreground hover:bg-surface-elevated hover:text-foreground transition-colors"
+            className="rounded-md p-2 md:p-1.5 text-muted-foreground hover:bg-surface-elevated hover:text-foreground transition-colors"
             aria-label="Copy message"
             title="Copy"
           >
-            <Copy className="h-3.5 w-3.5" />
+            <Copy className="h-4 w-4 md:h-3.5 md:w-3.5" />
           </button>
         </div>
       </div>
@@ -549,160 +735,129 @@ function useIntelligenceLive(): IntelligencePrefs {
 
 function ReasoningPanel({ m }: { m: Message }) {
   const streaming = m.pending && !m.reasoningDone;
-  const prefs = useIntelligenceLive();
-  const expandPref = prefs.thinking_expand ?? "auto";
-
-  // Live tick for elapsed timer while streaming.
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    if (!streaming) return;
-    const id = setInterval(() => setNow(Date.now()), 100);
-    return () => clearInterval(id);
-  }, [streaming]);
-
-  // Compute elapsed: prefer live start time while streaming, saved ms after.
-  const startedAt = m.reasoningStartedAt;
   const elapsedMs = m.reasoningDone
     ? (m.reasoningMs ?? 0)
-    : startedAt
-      ? now - startedAt
+    : m.reasoningStartedAt
+      ? Date.now() - m.reasoningStartedAt
       : 0;
-  const elapsedLabel = formatElapsed(elapsedMs);
-  const label = streaming
-    ? (startedAt ? `Thinking… ${elapsedLabel}` : "Thinking…")
-    : elapsedMs
-      ? `Thought for ${elapsedLabel}`
-      : "Thinking";
+  
+  const [timer, setTimer] = useState(0);
 
-  // Preference-driven expand/collapse.
-  const initialOpen =
-    expandPref === "always" ? true :
-    expandPref === "never" ? false :
-    streaming; // auto
-  const [open, setOpen] = useState(initialOpen);
-  const [userToggled, setUserToggled] = useState(false);
   useEffect(() => {
-    if (userToggled) return;
-    if (expandPref === "always") setOpen(true);
-    else if (expandPref === "never") setOpen(false);
-    else setOpen(streaming); // auto: open while streaming, collapse when done
-  }, [expandPref, streaming, userToggled]);
+    let interval: any;
+    if (streaming) {
+      const start = m.reasoningStartedAt || Date.now();
+      interval = setInterval(() => {
+        setTimer(Math.round((Date.now() - start) / 1000));
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [streaming, m.reasoningStartedAt]);
+
+  if (!streaming && !m.reasoning) return null;
+
+  const label = streaming 
+    ? `Thinking... (${timer}s)` 
+    : `Thought for ${formatElapsed(elapsedMs)}`;
+  const [open, setOpen] = useState(true);
 
   return (
-    <div className="mb-3 rounded-xl border border-border bg-surface/60 overflow-hidden">
+    <div className="mb-6 group/thinking">
       <button
-        onClick={() => { setUserToggled(true); setOpen((o) => !o); }}
-        className="w-full flex items-center gap-2 px-3 py-2 text-[12.5px] text-foreground/85 hover:bg-surface-elevated/60 transition-colors"
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-2 py-1.5 text-[13px] text-muted-foreground/60 transition-colors hover:text-foreground group focus-visible:outline-none"
+        aria-expanded={open}
       >
-        {streaming
-          ? <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-          : <Brain className="h-3.5 w-3.5 text-primary" />}
-        <span className={`font-medium ${streaming ? "arch-shimmer" : ""}`}>{label}</span>
-        <ChevronDown className={`ml-auto h-3.5 w-3.5 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
+        <div className={cn(
+          "flex items-center gap-2 font-medium tracking-tight",
+          streaming && "opacity-80"
+        )}>
+          <span className="flex items-center gap-2">
+            <span className="relative flex h-2 w-2">
+              {streaming && (
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary/40 opacity-75"></span>
+              )}
+              <span className={cn(
+                "relative inline-flex rounded-full h-2 w-2",
+                streaming ? "bg-primary" : "bg-muted-foreground/40"
+              )}></span>
+            </span>
+            {label}
+          </span>
+          <ChevronDown className={cn(
+            "h-3 w-3 shrink-0 transition-transform duration-300 opacity-0 group-hover/thinking:opacity-50",
+            open ? "rotate-180" : ""
+          )} />
+        </div>
       </button>
+      
       {open && (
-        <div className="px-3 pb-3 pt-1 border-t border-border">
-          <div className="whitespace-pre-wrap text-[12.5px] leading-relaxed text-muted-foreground italic">
-            {m.reasoning || (streaming ? "…" : "")}
-          </div>
+        <div className="mt-2 pl-4 border-l border-border/40 ml-1 space-y-1.5 py-1">
+          {m.reasoning ? (
+            <div className="text-[13.5px] leading-relaxed text-muted-foreground/70 font-serif italic selection:bg-primary/10 whitespace-pre-wrap">
+              {m.reasoning}
+            </div>
+          ) : (
+            streaming && (
+              <div className="text-[13.5px] leading-relaxed text-muted-foreground/40 font-serif italic animate-pulse">
+                Analyzing request...
+              </div>
+            )
+          )}
         </div>
       )}
     </div>
   );
 }
 
+
+
 function formatElapsed(ms: number): string {
-  if (ms < 1000) return `${Math.max(0, Math.round(ms / 100) * 100) / 1000}s`;
-  const totalSec = ms / 1000;
-  if (totalSec < 60) return `${totalSec.toFixed(1)}s`;
+  const totalSec = Math.round(ms / 1000);
+  if (totalSec < 1) return "1 second";
+  if (totalSec === 1) return "1 second";
+  if (totalSec < 60) return `${totalSec} seconds`;
   const m = Math.floor(totalSec / 60);
-  const s = Math.round(totalSec - m * 60);
+  const s = totalSec % 60;
+  if (s === 0) return `${m} minute${m > 1 ? 's' : ''}`;
   return `${m}m ${s}s`;
 }
 
 function AssistantMessage({ m }: { m: Message }) {
   const hasThinking = !!m.thinking && m.thinking.length > 0;
   const hasReasoning = typeof m.reasoning === "string" && (m.reasoning.length > 0 || (m.pending && !m.reasoningDone));
-  const [open, setOpen] = useState(m.pending);
-
-  useEffect(() => {
-    if (!m.pending) setOpen(false);
-  }, [m.pending]);
+  
+  // Metrixcom Engine uses transparent activity panels instead of research/search steps.
+  const showActivity = hasThinking || (m.pending && hasReasoning);
 
   return (
     <div className="flex justify-start">
       <div className="max-w-full w-full text-[14.5px] leading-relaxed text-foreground/95">
-        {hasReasoning && !m.pending && <ReasoningPanel m={m} />}
-        {hasThinking && (
-          <div className="mb-3 rounded-xl border border-border bg-surface/60 overflow-hidden">
-            <button
-              onClick={() => setOpen((o) => !o)}
-              className="w-full flex items-center gap-2 px-3 py-2 text-[12.5px] text-foreground/85 hover:bg-surface-elevated/60 transition-colors"
-            >
-              {m.pending ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-              ) : m.mode === "deep" ? (
-                <Telescope className="h-3.5 w-3.5 text-primary" />
-              ) : m.mode === "web" ? (
-                <Globe className="h-3.5 w-3.5 text-primary" />
-              ) : (
-                <Sparkles className="h-3.5 w-3.5 text-primary" />
-              )}
-              <span className="font-medium">
-                {m.pending
-                  ? m.mode === "deep"
-                    ? "Researching…"
-                    : m.mode === "web"
-                      ? "Searching the web…"
-                      : (m.thinking!.find((s) => !s.done)?.label ?? "Working…")
-                  : m.mode === "deep"
-                    ? "Research steps"
-                    : m.mode === "web"
-                      ? "Web search steps"
-                      : "Activity"}
-              </span>
-              <span className="text-muted-foreground">
-                · {m.thinking!.filter((s) => s.done).length}/{m.thinking!.length}
-              </span>
-              <ChevronDown
-                className={`ml-auto h-3.5 w-3.5 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
-              />
-            </button>
-            {open && (
-              <ol className="px-3 pb-3 pt-1 space-y-1.5 border-t border-border">
-                {m.thinking!.map((s, i) => (
-                  <li key={i} className="flex items-start gap-2 text-[12.5px]">
-                    <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center">
-                      {s.done ? (
-                        <Check className="h-3 w-3 text-primary" />
-                      ) : (
-                        <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-                      )}
-                    </span>
-                    <span className={s.done ? "text-foreground/90" : "text-muted-foreground"}>
-                      {s.label}
-                      {s.detail && (
-                        <span className="text-muted-foreground">
-                          {" — "}
-                          {s.url ? (
-                            <a
-                              href={s.url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="underline underline-offset-2 hover:text-primary"
-                            >
-                              {s.detail}
-                            </a>
-                          ) : (
-                            s.detail
-                          )}
-                        </span>
-                      )}
-                    </span>
-                  </li>
-                ))}
-              </ol>
-            )}
+        <SourceBadge m={m} />
+        {hasReasoning && <ReasoningPanel m={m} />}
+
+        
+        {hasThinking && !hasReasoning && (
+          <div className="mb-4 space-y-2">
+            <div className="flex items-center gap-2 text-[12.5px] font-medium text-primary arch-shimmer">
+              {m.pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5 text-emerald-500" />}
+              <span>Metrix-3 Engine: {m.pending ? "Orchestrating..." : "Task Complete"}</span>
+            </div>
+            <div className="pl-5 space-y-1.5 border-l border-primary/20 ml-1.5 py-1">
+              {m.thinking?.map((s, i) => (
+                <div key={i} className="flex items-center gap-2 text-[12px] text-muted-foreground">
+                  {s.done ? (
+                    <Check className="h-3 w-3 text-emerald-500" />
+                  ) : (
+                    <div className="h-1.5 w-1.5 rounded-full bg-primary/40 animate-pulse" />
+                  )}
+                  <span className={s.done ? "text-foreground/70" : "text-muted-foreground"}>
+                    {s.label}
+                  </span>
+                  {s.detail && <span className="text-[11px] opacity-60">— {s.detail}</span>}
+                </div>
+              ))}
+            </div>
           </div>
         )}
         
@@ -718,7 +873,15 @@ function AssistantMessage({ m }: { m: Message }) {
                     ) : p.type === "quiz" ? (
                       <InteractiveQuiz key={i} data={p.data} />
                     ) : (
-                      <ReactMarkdown key={i} remarkPlugins={[remarkGfm]} components={markdownComponents}>{p.content}</ReactMarkdown>
+                      <div className="prose prose-invert max-w-none prose-headings:font-semibold prose-h1:text-xl prose-h2:text-lg prose-h3:text-base prose-p:leading-relaxed prose-li:my-1 prose-table:my-4 prose-blockquote:border-l-primary/30 prose-blockquote:italic">
+                        <ReactMarkdown 
+                          key={i} 
+                          remarkPlugins={[remarkGfm]} 
+                          components={markdownComponents}
+                        >
+                          {p.content}
+                        </ReactMarkdown>
+                      </div>
                     )
                   )}
                 </div>
@@ -765,33 +928,33 @@ function AssistantActions({ m }: { m: Message }) {
 
   return (
     <>
-      <div className="mt-2 flex items-center gap-0.5 -ml-1">
-        <button onClick={copy} className={btn} title="Copy" aria-label="Copy reply">
-          <Copy className="h-3.5 w-3.5" />
+      <div className="mt-2 flex flex-wrap items-center gap-1 -ml-1">
+        <button onClick={copy} className={cn(btn, "p-2 md:p-1")} title="Copy" aria-label="Copy reply">
+          <Copy className="h-4 w-4 md:h-3.5 md:w-3.5" />
         </button>
         <button
           onClick={like}
-          className={`${btn} ${liked ? "text-primary hover:text-primary" : ""}`}
+          className={cn(btn, "p-2 md:p-1", liked ? "text-primary hover:text-primary" : "")}
           title="Good reply"
           aria-label="Like reply"
           aria-pressed={liked}
         >
-          <ThumbsUp className={`h-3.5 w-3.5 ${liked ? "fill-primary/30" : ""}`} />
+          <ThumbsUp className={`h-4 w-4 md:h-3.5 md:w-3.5 ${liked ? "fill-primary/30" : ""}`} />
         </button>
         <button
           onClick={dislike}
-          className={`${btn} ${disliked ? "text-destructive hover:text-destructive" : ""}`}
+          className={cn(btn, "p-2 md:p-1", disliked ? "text-destructive hover:text-destructive" : "")}
           title="Bad reply"
           aria-label="Dislike reply"
           aria-pressed={disliked}
         >
-          <ThumbsDown className={`h-3.5 w-3.5 ${disliked ? "fill-destructive/30" : ""}`} />
+          <ThumbsDown className={`h-4 w-4 md:h-3.5 md:w-3.5 ${disliked ? "fill-destructive/30" : ""}`} />
         </button>
-        <button onClick={() => setShareOpen(true)} className={btn} title="Share" aria-label="Share reply">
-          <Share2 className="h-3.5 w-3.5" />
+        <button onClick={() => setShareOpen(true)} className={cn(btn, "p-2 md:p-1")} title="Share" aria-label="Share reply">
+          <Share2 className="h-4 w-4 md:h-3.5 md:w-3.5" />
         </button>
-        <button onClick={retry} className={btn} title="Try again" aria-label="Regenerate reply">
-          <RefreshCw className="h-3.5 w-3.5" />
+        <button onClick={retry} className={cn(btn, "p-2 md:p-1")} title="Try again" aria-label="Regenerate reply">
+          <RefreshCw className="h-4 w-4 md:h-3.5 md:w-3.5" />
         </button>
       </div>
       {shareOpen && <ShareDialog m={m} onClose={() => setShareOpen(false)} />}
@@ -940,28 +1103,15 @@ const STAGE_META: Record<NonNullable<Message["stage"]>, { label: string; icon: t
 };
 
 function SourceBadge({ m }: { m: Message }) {
-  const agent = getAgent(m.agent);
   const stage = m.stage ?? "direct";
   const meta = STAGE_META[stage];
   const StageIcon = meta.icon;
-  const providerLabel = m.source
-    ? PROVIDER_LABEL[m.source.provider] ?? m.source.provider
-    : m.pending ? "Routing…" : "—";
-  const modelLabel = m.source?.model;
+  const friendlyName = m.source ? getFriendlyName(m.source.model) : null;
+  const modelEntry = m.source?.model ? getModelEntry(m.source.model) : null;
+  const cost = m.source?.cost;
 
   return (
     <div className="mb-2 flex flex-wrap items-center gap-1.5 text-[11px]">
-      <span
-        className="inline-flex items-center gap-1 rounded-md border border-border bg-surface/70 px-1.5 py-0.5 font-medium text-foreground/85"
-        title={`Reply generated by ${agent.name}`}
-      >
-        <span
-          className="h-1.5 w-1.5 rounded-full"
-          style={{ background: "hsl(var(--primary))" }}
-          aria-hidden
-        />
-        {agent.name}
-      </span>
       <span
         className="inline-flex items-center gap-1 rounded-md border border-border bg-surface/70 px-1.5 py-0.5 text-muted-foreground"
         title={`Internal stage: ${meta.label}`}
@@ -969,13 +1119,26 @@ function SourceBadge({ m }: { m: Message }) {
         <StageIcon className="h-3 w-3" />
         {meta.label}
       </span>
-      <span
-        className="inline-flex items-center gap-1 rounded-md border border-border bg-surface/70 px-1.5 py-0.5 text-muted-foreground"
-        title={modelLabel ? `Model: ${modelLabel}` : "Provider selecting…"}
-      >
-        <span className="text-foreground/80">{providerLabel}</span>
-        {modelLabel && <span className="text-muted-foreground/80">· {modelLabel}</span>}
-      </span>
+      {friendlyName && (
+        <span
+          className="inline-flex items-center gap-1 rounded-md border border-border bg-surface/70 px-1.5 py-0.5 text-muted-foreground"
+          title={`Engine: ${friendlyName}`}
+        >
+          {modelEntry && <ModelIcon modelId={modelEntry.id} className="h-3 w-3 opacity-60" />}
+          <span className="text-foreground/80">{friendlyName}</span>
+        </span>
+      )}
+      {cost && cost > 0 && (
+        <span
+          className="inline-flex items-center gap-1 rounded-md border border-border bg-surface/70 px-1.5 py-0.5 text-muted-foreground"
+          title={`Cost: $${cost.toFixed(4)}`}
+        >
+          <Globe className="h-3 w-3 opacity-60" />
+          <span className="text-foreground/80">${cost.toFixed(4)}</span>
+        </span>
+      )}
     </div>
   );
 }
+
+

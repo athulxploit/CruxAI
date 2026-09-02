@@ -9,7 +9,7 @@ function html(body: string, status = 200) {
 }
 
 function postMessageHtml(origin: string, payload: Record<string, unknown>): string {
-  const data = JSON.stringify({ type: "metrixcom_github_oauth", ...payload });
+  const data = JSON.stringify({ type: "metrixcom_github_oauth", connectorId: "github", ...payload });
   const originJson = JSON.stringify(origin);
   return `<!doctype html><html><body style="background:#0a0a0a;color:#fff;font-family:system-ui;padding:24px;">
 <p>Finishing sign in…</p>
@@ -80,7 +80,7 @@ export const Route = createFileRoute("/api/public/github-callback")({
           const { saveConnectionKeyForUser } = await import("@/lib/app-user-connections.server");
           await saveConnectionKeyForUser(verified.userId, "github", tokJson.access_token);
 
-          return html(postMessageHtml(targetOrigin, { success: true }));
+          return html(postMessageHtml(targetOrigin, { success: true, status: "success" }));
         } catch (e) {
           const msg = e instanceof Error ? e.message : "Unexpected error";
           return html(postMessageHtml(targetOrigin, { success: false, error: msg }));

@@ -86,7 +86,7 @@ export function DrivePicker({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-surface border-border rounded-2xl max-w-lg">
+      <DialogContent className="bg-surface border-border rounded-2xl max-w-lg duration-150 ease-out">
         <DialogHeader>
           <DialogTitle>Google Drive</DialogTitle>
           <DialogDescription>

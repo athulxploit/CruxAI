@@ -10,7 +10,16 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/auth")({
-  head: () => ({ meta: [{ title: "Sign in — Metrixcom" }] }),
+  head: () => ({
+    meta: [
+      { title: "Sign in — Metrixcom" },
+      { name: "description", content: "Sign in to your Metrixcom account to access your AI workspace, agents, and professional engineering tools." },
+      { property: "og:title", content: "Sign in — Metrixcom" },
+      { property: "og:description", content: "Access your Metrixcom AI workspace." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: AuthPage,
 });
 

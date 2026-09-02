@@ -23,6 +23,7 @@ import {
   listGithubRepos,
   listGithubContents,
   importGithubFile,
+  startGithubConnect,
   type GithubRepo,
   type GithubContentItem,
 } from "@/lib/github.functions";
@@ -61,7 +62,35 @@ export function GithubPicker({
     setLoading(true);
     listRepos({ data: { query: query.trim() || undefined } })
       .then((r) => !cancelled && setRepos(r.repos))
-      .catch((e) => toast.error(e instanceof Error ? e.message : "Failed to load repos"))
+      .catch((e) => {
+        const msg = e instanceof Error ? e.message : "Failed to load repos";
+        if (msg.includes("GitHub is not connected")) {
+          toast.error("GitHub not connected", {
+            action: {
+              label: "Connect",
+              onClick: () => {
+                startGithubConnect({ data: window.location.origin }).then((res) => {
+                  connectGithubPopup(() => Promise.resolve(res.authorizationUrl)).then((r) => {
+                    if (r.success) {
+                      setRepo(null);
+                      setQuery("");
+                      setLoading(true);
+                      listRepos({ data: { query: query.trim() || undefined } })
+                        .then((retry) => setRepos(retry.repos))
+                        .catch((err) => toast.error(err.message))
+                        .finally(() => setLoading(false));
+                    } else if (r.error) {
+                      toast.error(r.error);
+                    }
+                  });
+                });
+              },
+            },
+          });
+        } else {
+          toast.error(msg);
+        }
+      })
       .finally(() => !cancelled && setLoading(false));
     return () => {
       cancelled = true;
@@ -124,7 +153,7 @@ export function GithubPicker({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-surface border-border rounded-2xl max-w-lg">
+      <DialogContent className="bg-surface border-border rounded-2xl max-w-lg duration-150 ease-out">
         <DialogHeader>
           <DialogTitle className="inline-flex items-center gap-2">
             <Github className="h-4 w-4" /> GitHub

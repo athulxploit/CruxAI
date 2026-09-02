@@ -2,7 +2,9 @@
 // can read them without waiting for Supabase.
 
 export type ResponseLength = "short" | "balanced" | "detailed";
-export type PreferredModel = "auto" | "gemini" | "gpt" | "claude";
+export type PreferredModel = "auto" | "nemotron_3_nano" | "nemotron_35_lightning" | "gpt_54_nano" | "gpt_54_mini" | "deepseek_v4_flash" | "nemotron_3_super" | "gpt_53_codex" | "gpt_55_terra" | "claude_sonnet_5" | "glm_52" | "nemotron_3_ultra" | "gpt_56_sol" | "claude_opus_46";
+import type { ReasoningLevel } from "./reasoning";
+
 export type ThinkingExpand = "auto" | "always" | "never";
 
 export type IntelligencePrefs = {
@@ -16,16 +18,17 @@ export type IntelligencePrefs = {
   preferred_model: PreferredModel;
   response_length: ResponseLength;
   thinking_mode: boolean;
-  thinking_expand: ThinkingExpand; // auto = open while streaming then collapse; always = open; never = collapsed
+  thinking_expand: ThinkingExpand; // auto = open while streaming and stay open; always = open; never = collapsed
   auto_citations: boolean;
   auto_code_explanations: boolean;
   safe_mode: boolean;
   creativity: number; // 0-100
   unlimited_output: boolean; // when true, remove per-effort output token cap
+  reasoning_level: ReasoningLevel; // provider reasoning control; adapts to the selected model
 };
 
 export const INTELLIGENCE_DEFAULTS: IntelligencePrefs = {
-  default_agent: "pulse-1",
+  default_agent: "metrixcom", // Legacy internal field for backward compat
   default_effort: "medium",
   web_search: false,
   deep_research: false,
@@ -41,6 +44,7 @@ export const INTELLIGENCE_DEFAULTS: IntelligencePrefs = {
   safe_mode: true,
   creativity: 50,
   unlimited_output: false,
+  reasoning_level: "off",
 };
 
 const KEY = "arch:intelligence";
@@ -70,8 +74,18 @@ export function subscribeIntelligence(cb: (p: IntelligencePrefs) => void) {
 }
 
 export const MODEL_LABEL: Record<PreferredModel, string> = {
-  auto: "Auto",
-  gemini: "Gemini",
-  gpt: "GPT",
-  claude: "Claude",
+  auto: "Auto Selection",
+  nemotron_3_nano: "Nemotron-3 Nano",
+  nemotron_35_lightning: "Nemotron-3.5 Lightning",
+  gpt_54_nano: "GPT-5.4 Nano",
+  gpt_54_mini: "GPT-5.4 Mini",
+  deepseek_v4_flash: "DeepSeek V4 Flash",
+  nemotron_3_super: "Nemotron-3 Super",
+  gpt_53_codex: "GPT-5.3 Codex",
+  gpt_55_terra: "GPT-5.5 Terra",
+  claude_sonnet_5: "Claude Sonnet 5",
+  glm_52: "GLM-5.2",
+  nemotron_3_ultra: "Nemotron-3 Ultra",
+  gpt_56_sol: "GPT-5.6 Sol",
+  claude_opus_46: "Claude Opus 4.6",
 };

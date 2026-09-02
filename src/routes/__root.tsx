@@ -5,10 +5,13 @@ import {
   createRootRouteWithContext,
   useRouter,
   useRouterState,
+  useNavigate,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
+import { MessageSquare, LayoutGrid, Settings } from "lucide-react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -20,8 +23,10 @@ import { PlatformProvider, usePlatform } from "@/lib/platform";
 import { UserPrefsProvider } from "@/lib/user-prefs";
 import { AutoTranslator } from "@/lib/auto-translator";
 import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { TwoFactorGate } from "@/components/arch/two-factor-gate";
 import { PlanCelebration } from "@/components/arch/plan-celebration";
+import { cn } from "@/lib/utils";
 
 import { useState } from "react";
 
@@ -97,6 +102,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { property: "og:url", content: "https://ai.metrixcom.com" },
+      { rel: "canonical", href: "https://ai.metrixcom.com" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
       { name: "apple-mobile-web-app-title", content: "Metrixcom" },
@@ -113,6 +120,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Michroma&display=swap" },
+      { rel: "preload", as: "script", href: "https://checkout.razorpay.com/v1/checkout.js" },
     ],
   }),
   shellComponent: RootShell,
@@ -135,6 +143,7 @@ function RootShell({ children }: { children: ReactNode }) {
       </head>
       <body className="bg-background text-foreground">
         {children}
+        <script src="https://checkout.razorpay.com/v1/checkout.js" async />
         <Scripts />
       </body>
     </html>
@@ -149,11 +158,12 @@ function RootComponent() {
         <AppearanceProvider>
           <UserPrefsProvider>
             <PlatformProvider>
-              <Shell />
-              <PlanCelebration />
-              <AutoTranslator />
-
-              <Toaster />
+              <TooltipProvider>
+                <Shell />
+                <PlanCelebration />
+                <AutoTranslator />
+                <Toaster />
+              </TooltipProvider>
             </PlatformProvider>
           </UserPrefsProvider>
         </AppearanceProvider>
@@ -204,15 +214,79 @@ function Shell() {
 
   return (
     <TwoFactorGate>
-      <div className="flex h-screen w-full overflow-hidden bg-background">
-        <AppSidebar />
-        <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex h-[100dvh] w-screen overflow-hidden bg-background relative pointer-events-auto">
+        <div className="hidden md:flex flex-none pointer-events-auto">
+          <AppSidebar />
+        </div>
+        <div className="flex-1 flex flex-col min-w-0 relative pointer-events-auto overflow-hidden">
           <PlatformOverlays />
           <TopBar />
-          <Outlet />
+          <main className="flex-1 overflow-hidden relative pointer-events-auto">
+            <Outlet />
+          </main>
+          <div className="md:hidden pointer-events-auto flex-none">
+            <MobileBottomNav />
+          </div>
         </div>
       </div>
     </TwoFactorGate>
+  );
+}
+
+function MobileBottomNav() {
+  const { t } = useTranslation();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const navigate = useNavigate();
+  const { profile, user } = useAuth();
+
+  const navItems = [
+    { to: "/", labelKey: "chat", icon: MessageSquare },
+    { to: "/history", labelKey: "history", icon: MessageSquare },
+    { to: "/workspaces", labelKey: "workspaces", icon: LayoutGrid },
+    { to: "/settings", labelKey: "settings", icon: Settings },
+  ];
+
+  const displayName = profile?.display_name ?? user?.email?.split("@")[0] ?? "User";
+  const initials = displayName
+    .split(" ")
+    .map((n) => n[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+
+  return (
+    <nav className="h-16 border-t border-sidebar-border bg-sidebar px-4 flex items-center justify-between pb-safe">
+      {navItems.map((item) => {
+        const active = pathname === item.to || (item.to !== "/" && pathname.startsWith(item.to));
+        return (
+          <button
+            key={item.to}
+            onClick={() => navigate({ to: item.to as any })}
+            className={cn(
+              "flex flex-1 flex-col items-center gap-1 transition-colors py-1",
+              active ? "text-primary" : "text-muted-foreground"
+            )}
+          >
+            <item.icon className="h-5 w-5" />
+            <span className="text-[10px] font-medium">{t(item.labelKey)}</span>
+          </button>
+        );
+      })}
+      
+      <button
+        onClick={() => navigate({ to: "/settings" as any })}
+        className="flex flex-1 flex-col items-center gap-1 py-1"
+      >
+        <div className="h-6 w-6 rounded-full bg-gradient-to-br from-secondary to-muted grid place-items-center text-[10px] font-medium overflow-hidden border border-sidebar-border">
+          {profile?.avatar_url ? (
+            <img src={profile.avatar_url} alt="" className="h-full w-full object-cover" />
+          ) : (
+            initials
+          )}
+        </div>
+        <span className="text-[10px] font-medium text-muted-foreground">{t("profile")}</span>
+      </button>
+    </nav>
   );
 }
 
@@ -247,8 +321,8 @@ function PlatformOverlays() {
         </div>
       )}
       {popup && !dismissed.includes(popup.id) && (
-        <div className="fixed inset-0 z-50 bg-black/60 grid place-items-center p-4" onClick={() => dismiss(popup.id)}>
-          <div className="bg-surface border border-border rounded-2xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 bg-black/60 grid place-items-center p-4 animate-in fade-in duration-150 ease-out" onClick={() => dismiss(popup.id)}>
+          <div className="bg-surface border border-border rounded-2xl max-w-md w-full p-6 animate-in zoom-in-95 duration-200 ease-out" onClick={(e) => e.stopPropagation()}>
             <div className="text-[16px] font-semibold">{popup.title}</div>
             <div className="mt-2 text-[13.5px] text-muted-foreground whitespace-pre-wrap">{popup.body}</div>
             <div className="mt-5 flex justify-end">

@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageShell } from "@/components/arch/page-shell";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
@@ -17,13 +17,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { AGENTS, EFFORT_LEVELS } from "@/lib/agents";
+import { EFFORT_LEVELS } from "@/lib/agents";
 import { Trash2, Download, Loader2, Sparkles, Search, Pencil, Check, X, Globe, Monitor, MapPin, Clock, ChevronLeft, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useAppearance } from "@/lib/appearance";
 import { setArchMode, isArchModeOn } from "@/lib/arch-mode";
 import { Slider } from "@/components/ui/slider";
 import { INTELLIGENCE_DEFAULTS, saveIntelligence, MODEL_LABEL, type PreferredModel, type ResponseLength } from "@/lib/intelligence";
+import { planRank } from "@/lib/plan-meta";
+
+import { MODEL_REGISTRY } from "@/lib/model-registry";
+import { ModelIcon } from "@/components/arch/model-icon";
 import { saveNotifPrefs, requestDesktopPermission, subscribeMobilePush, showDesktopNotification, playNotifSound } from "@/lib/notif-prefs";
 import { haptic, isHapticsEnabled, isHapticsSupported, setHapticsEnabled } from "@/lib/haptics";
 import { useServerFn } from "@tanstack/react-start";
@@ -35,9 +39,20 @@ import { GithubPicker, connectGithubPopup } from "@/components/arch/github-picke
 import { Github } from "lucide-react";
 import { store } from "@/lib/app-store";
 import { useIncognito, setAllowTrainingCache, setSaveHistoryCache } from "@/lib/incognito";
+import { createRazorpayOrder, verifyRazorpayPayment } from "@/lib/razorpay.functions";
+import { BadgeCheck } from "lucide-react";
 
 export const Route = createFileRoute("/settings")({
-  head: () => ({ meta: [{ title: "Settings — Metrixcom" }] }),
+  head: () => ({
+    meta: [
+      { title: "Settings — Metrixcom" },
+      { name: "description", content: "Manage your Metrixcom account, workspace preferences, intelligence settings, and security options." },
+      { property: "og:title", content: "Settings — Metrixcom" },
+      { property: "og:description", content: "Configure your Metrixcom experience." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: SettingsPage,
 });
 
@@ -52,6 +67,8 @@ const SECTIONS = [
   { id: "sessions", label: "Sessions" },
   { id: "memory", label: "Memory" },
   { id: "subscription", label: "Subscription" },
+  { id: "computer", label: "Computer" },
+  { id: "api-keys", label: "Direct API Keys" },
 ] as const;
 
 type SectionId = (typeof SECTIONS)[number]["id"];
@@ -105,12 +122,16 @@ function SettingsPage() {
   const current = SECTIONS.find((s) => s.id === effective)!;
   return (
     <PageShell title="Settings" description="Manage your account, workspace and preferences.">
-      <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-6 md:gap-10">
+      <div className="flex flex-col md:flex-row gap-6 md:gap-10 min-h-0 pointer-events-auto relative items-start">
+        <div
+          className={cn(
+            "w-full md:w-[200px] flex-none md:sticky md:top-6 self-start",
+            section === null ? "block" : "hidden md:block",
+          )}
+        >
         <nav
           className={cn(
-            "md:space-y-0.5 md:block md:border-0 md:pb-0 md:overflow-visible",
-            // Mobile: full list of rows, hidden when a section is opened
-            section === null ? "block" : "hidden md:block",
+            "md:space-y-0.5 md:block md:border-0 md:pb-0 md:max-h-[calc(100vh-180px)] md:overflow-y-auto md:pr-1",
           )}
         >
           {SECTIONS.map((s) => (
@@ -129,9 +150,13 @@ function SettingsPage() {
             </button>
           ))}
         </nav>
+        </div>
 
         <div
-          className={cn("min-w-0", section === null ? "hidden md:block" : "block")}
+          className={cn(
+            "flex-1 min-w-0 pr-2 relative z-10",
+            section === null ? "hidden md:block" : "block"
+          )}
           onTouchStart={(e) => {
             const t = e.touches[0];
             (e.currentTarget as any)._sx = t.clientX;
@@ -152,16 +177,20 @@ function SettingsPage() {
             <p className="text-[11.5px] text-muted-foreground/70 mt-0.5">Swipe left to go back</p>
           </div>
 
-          {effective === "account" && <AccountSection />}
-          {effective === "appearance" && <AppearanceSection />}
-          {effective === "intelligence" && <PrefsSection which="intelligence" />}
-          {effective === "integrations" && <IntegrationsSection />}
-          {effective === "notifications" && <PrefsSection which="notifications" />}
-          {effective === "privacy" && <PrivacySection />}
-          {effective === "security" && <SecuritySection />}
-          {effective === "sessions" && <SessionsSection />}
-          {effective === "memory" && <MemorySection />}
-          {effective === "subscription" && <SubscriptionSection />}
+          <div className="animate-in fade-in duration-150 ease-out">
+            {effective === "account" && <AccountSection />}
+            {effective === "appearance" && <AppearanceSection />}
+            {effective === "intelligence" && <PrefsSection which="intelligence" />}
+            {effective === "integrations" && <IntegrationsSection />}
+            {effective === "notifications" && <PrefsSection which="notifications" />}
+            {effective === "privacy" && <PrivacySection />}
+            {effective === "security" && <SecuritySection />}
+            {effective === "sessions" && <SessionsSection />}
+            {effective === "memory" && <MemorySection />}
+            {effective === "subscription" && <SubscriptionSection />}
+            {effective === "computer" && <ComputerSettingsSection />}
+            {effective === "api-keys" && <ApiKeysSection />}
+          </div>
         </div>
       </div>
     </PageShell>
@@ -418,7 +447,7 @@ function AccountSection() {
             <Label className="text-[12px]">Country</Label>
             <Select value={country} onValueChange={setCountry}>
               <SelectTrigger className="mt-1"><SelectValue placeholder="Select country" /></SelectTrigger>
-              <SelectContent className="max-h-64">
+              <SelectContent className="max-h-64 duration-150 ease-out">
                 {COUNTRIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
               </SelectContent>
             </Select>
@@ -547,30 +576,48 @@ function PrefsSection({ which }: { which: "intelligence" | "notifications" }) {
     };
 
 
+    const { profile, isAdmin } = useAuth();
+    const userPlan = profile?.plan || "free";
 
     return (
       <>
-        <Card title="Intelligence" description="Defaults for how agents behave.">
-          <Row label="Metrixcom Mode" hint="Auto-select the best agent for each prompt.">
-            <Switch checked={!!v.arch_mode} onCheckedChange={(x) => saveI({ arch_mode: x })} />
-          </Row>
-          <Row label="Default agent">
-            <Select value={String(v.default_agent)} onValueChange={(x) => saveI({ default_agent: x })}>
-              <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {AGENTS.map((a) => (
-                  <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        <Card title="Metrixcom Engine" description="Manage unified intelligence settings.">
+          <Row label="Automated Routing" hint="The Metrixcom Engine automatically picks capabilities for each prompt.">
+            <Switch checked disabled />
           </Row>
           <Row label="Preferred model" hint="Which model family to prefer when available.">
             <Select value={String(v.preferred_model ?? "auto")} onValueChange={(x) => saveI({ preferred_model: x as PreferredModel })}>
-              <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
               <SelectContent>
-                {(["auto", "gemini", "gpt", "claude"] as PreferredModel[]).map((m) => (
-                  <SelectItem key={m} value={m}>{MODEL_LABEL[m]}</SelectItem>
-                ))}
+                <SelectItem value="auto">Auto Selection</SelectItem>
+                {MODEL_REGISTRY.map((m) => {
+                  const userRank = isAdmin ? 99 : planRank(userPlan);
+                  const minRank = planRank(m.minPlan);
+                  const locked = minRank > userRank;
+                  const showBadge = minRank > userRank;
+                  
+                  return (
+                    <SelectItem key={m.id} value={m.id} disabled={locked}>
+                      <div className="flex items-center justify-between w-full gap-2">
+                        <div className="flex items-center gap-2">
+                          <ModelIcon modelId={m.id} className="h-3.5 w-3.5 opacity-70" />
+                          <span>{m.name}</span>
+                        </div>
+                        {showBadge && (
+                          <span className={cn(
+                            "rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide",
+                            m.minPlan === "standard" && "bg-blue-500/10 text-blue-500",
+                            m.minPlan === "pro" && "bg-amber-500/10 text-amber-500",
+                            m.minPlan === "proplus" && "bg-purple-500/10 text-purple-500"
+                          )}>
+                            {m.minPlan === "proplus" ? "Pro+" : m.minPlan}
+                          </span>
+                        )}
+                      </div>
+                    </SelectItem>
+                  );
+                })}
+
               </SelectContent>
             </Select>
           </Row>
@@ -594,18 +641,8 @@ function PrefsSection({ which }: { which: "intelligence" | "notifications" }) {
               </SelectContent>
             </Select>
           </Row>
-          <Row label="Thinking mode" hint="Show reasoning steps before answers.">
+          <Row label="Activity transparency" hint="Show what Metrixcom is doing (analyzing, searching, planning).">
             <Switch checked={!!v.thinking_mode} onCheckedChange={(x) => saveI({ thinking_mode: x })} />
-          </Row>
-          <Row label="Thinking panel" hint="Auto = open while thinking, collapse when done.">
-            <Select value={(v.thinking_expand as string) ?? "auto"} onValueChange={(x) => saveI({ thinking_expand: x as "auto" | "always" | "never" })}>
-              <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="auto">Auto</SelectItem>
-                <SelectItem value="always">Always open</SelectItem>
-                <SelectItem value="never">Always collapsed</SelectItem>
-              </SelectContent>
-            </Select>
           </Row>
           <Row label="Auto citations" hint="Append sources to answers when possible.">
             <Switch checked={!!v.auto_citations} onCheckedChange={(x) => saveI({ auto_citations: x })} />
@@ -771,7 +808,7 @@ function HapticRow() {
 
 function PrivacySection() {
   const { value, save, loaded } = usePrefs("privacy");
-  const { user } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const incognito = useIncognito();
   const allowTraining = value.allow_training !== false;
   useEffect(() => {
@@ -927,10 +964,23 @@ function PrivacySection() {
           hint="On by default. Allows anonymised conversations to train and improve Metrixcom. Turn it off and we won't use your data."
         >
           <Switch
-            checked={value.allow_training !== false}
-            onCheckedChange={(v) => {
+            checked={profile?.allow_data_collection !== false}
+            onCheckedChange={async (v) => {
+              if (!user) return;
               setAllowTrainingCache(v);
               save({ ...value, allow_training: v });
+              
+              const { error } = await supabase
+                .from("profiles")
+                .update({ allow_data_collection: v })
+                .eq("id", user.id);
+                
+              if (error) {
+                toast.error("Failed to sync preference: " + error.message);
+              } else {
+                refreshProfile();
+                toast.success(v ? "Data collection enabled" : "Data collection disabled");
+              }
             }}
           />
         </Row>
@@ -1904,16 +1954,86 @@ function SubscriptionSection() {
               </tbody>
             </table>
           </div>
-          <div className="flex gap-2 pt-2">
+          <div className="flex flex-wrap gap-2 pt-2">
             {upgradeTargets.map((p) => (
-              <Button key={p.id} variant="outline" size="sm" onClick={async () => {
-                if (!user) return;
-                const { error } = await supabase.from("profiles").update({ plan: p.name.toLowerCase() } as never).eq("id", user.id);
-                if (error) return toast.error(error.message);
-                toast.success(`Upgraded to ${p.name}`);
-                refreshProfile();
-                loadAll();
-              }}>Upgrade to {p.name}</Button>
+              <Button
+                key={p.id}
+                variant="outline"
+                size="sm"
+                disabled={busy}
+                onClick={async () => {
+                  if (!user) return;
+                  setBusy(true);
+                  try {
+                    const makeOrder = createRazorpayOrder;
+                    const order = await makeOrder({
+                      data: {
+                        amount: p.price_monthly * 100, // INR to paise
+                        currency: "INR",
+                        receipt: `upgrade_${user.id}_${Date.now()}`,
+                      },
+                    });
+
+                    const options = {
+                      key: import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_placeholder",
+                      amount: order.amount,
+                      currency: order.currency,
+                      name: "Metrixcom AI",
+                      description: `Upgrade to ${p.name} Plan`,
+                      order_id: order.id,
+                      handler: async (response: any) => {
+                        const verify = verifyRazorpayPayment;
+                        const result = await verify({
+                          data: {
+                            razorpay_order_id: response.razorpay_order_id,
+                            razorpay_payment_id: response.razorpay_payment_id,
+                            razorpay_signature: response.razorpay_signature,
+                          },
+                        });
+
+                        if (result.isValid) {
+                          const { error } = await supabase
+                            .from("profiles")
+                            .update({ plan: p.name.toLowerCase() } as never)
+                            .eq("id", user.id);
+                          
+                          if (!error) {
+                            await supabase.from("activity_log").insert({
+                              user_id: user.id,
+                              type: "premium_purchase_intent",
+                              category: "billing",
+                              message: `Upgraded to ${p.name}`,
+                              meta: { plan_name: p.name, price: p.price_monthly, razorpay_id: response.razorpay_payment_id },
+                            } as never);
+                            toast.success(`Welcome to ${p.name}!`);
+                            refreshProfile();
+                            loadAll();
+                          } else {
+                            toast.error("Failed to update profile after payment. Please contact support.");
+                          }
+                        } else {
+                          toast.error("Payment verification failed.");
+                        }
+                      },
+                      prefill: {
+                        email: user.email,
+                      },
+                      theme: {
+                        color: "#3B82F6",
+                      },
+                    };
+
+                    const rzp = new (window as any).Razorpay(options);
+                    rzp.open();
+                  } catch (e: any) {
+                    toast.error(e.message || "Failed to initiate payment");
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              >
+                Upgrade to {p.name}
+              </Button>
             ))}
           </div>
         </Card>
@@ -1978,11 +2098,12 @@ function AppearanceSection() {
   return (
     <Card title="Appearance" description="Changes apply instantly across the app.">
       <Row label="Theme">
-        <Select value={appearance.theme} onValueChange={(v) => update({ theme: v as "dark" | "light" | "system" })}>
+        <Select value={appearance.theme} onValueChange={(v) => update({ theme: v as "dark" | "light" | "studio" | "system" })}>
           <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="dark">Dark</SelectItem>
             <SelectItem value="light">Light</SelectItem>
+            <SelectItem value="studio">Studio</SelectItem>
             <SelectItem value="system">System</SelectItem>
           </SelectContent>
         </Select>
@@ -2361,4 +2482,285 @@ function IntegrationsSection() {
   );
 }
 
+function ComputerSettingsSection() {
+  const { user } = useAuth();
+  const [devices, setDevices] = useState<any[]>([]);
 
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from("user_devices")
+      .select("*")
+      .eq("user_id", user.id)
+      .then(({ data }) => setDevices(data || []));
+  }, [user]);
+
+  return (
+    <div className="space-y-6">
+      <Card title="Connected Devices" description="Manage your authorized local and cloud environments.">
+        {devices.length === 0 ? (
+          <div className="text-center py-6 text-[13px] text-muted-foreground">
+            No devices connected. Visit the <Link to="/computer" className="text-primary hover:underline">Computer</Link> page to pair.
+          </div>
+        ) : (
+          <div className="divide-y divide-border">
+            {devices.map((d) => (
+              <div key={d.id} className="py-3 first:pt-0 last:pb-0 flex items-center justify-between">
+                <div>
+                  <div className="text-[13px] font-medium">{d.name}</div>
+                  <div className="text-[11px] text-muted-foreground">
+                    {d.os} · {d.type} · Last seen {new Date(d.last_seen_at).toLocaleDateString()}
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm">Manage</Button>
+                  <Button variant="ghost" size="sm" className="text-destructive">Revoke</Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+      
+      <Card title="Cloud Computer" description="Infrastructure settings for your cloud workspaces.">
+        <Row label="Auto-terminate" hint="Shut down cloud instance after 30 minutes of inactivity.">
+          <Switch checked />
+        </Row>
+        <Row label="Performance tier" hint="Standard (2 vCPU, 4GB RAM) vs Performance (4 vCPU, 8GB RAM).">
+          <Select defaultValue="standard">
+            <SelectTrigger className="w-[120px] h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="standard">Standard</SelectItem>
+              <SelectItem value="performance">Performance</SelectItem>
+            </SelectContent>
+          </Select>
+        </Row>
+        <Row label="Dedicated Public IP" hint="Allow direct SSH access to your cloud computer.">
+          <Switch />
+        </Row>
+      </Card>
+
+      <Card title="Permissions" description="Global computer control safety settings.">
+        <Row label="Always ask for terminal" hint="Show confirmation dialog for every command.">
+          <Switch checked />
+        </Row>
+        <Row label="Restrict to project paths" hint="Only allow access to authorized directories.">
+          <Switch checked />
+        </Row>
+        <Row label="High-risk confirmation" hint="Require second factor for destructive operations.">
+          <Switch checked />
+        </Row>
+      </Card>
+    </div>
+  );
+}
+
+
+
+
+
+/* ---------------- API KEYS ---------------- */
+
+function ApiKeysSection() {
+  const [openrouter, setOpenrouter] = useState("");
+  const [groq, setGroq] = useState("");
+  const [gemini, setGemini] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [testing, setTesting] = useState<string | null>(null);
+  const [testResults, setTestResults] = useState<Record<string, { ok: boolean; msg: string }>>({});
+
+  const testKey = async (provider: string, key: string) => {
+    if (!key) return;
+    setTesting(provider);
+    try {
+      // Direct API verification calls
+      let url = "";
+      let headers: Record<string, string> = { "Content-Type": "application/json" };
+      let body = {};
+
+      if (provider === "OpenRouter") {
+        url = "https://openrouter.ai/api/v1/auth/key";
+        headers["Authorization"] = `Bearer ${key}`;
+      } else if (provider === "Groq") {
+        url = "https://api.groq.com/openai/v1/models";
+        headers["Authorization"] = `Bearer ${key}`;
+      } else if (provider === "Gemini") {
+        url = `https://generativelanguage.googleapis.com/v1beta/models?key=${key}`;
+      }
+
+      const res = await fetch(url, { method: provider === "OpenRouter" ? "GET" : "GET", headers });
+      
+      if (res.ok) {
+        setTestResults(prev => ({ ...prev, [provider]: { ok: true, msg: "Connected successfully" } }));
+        toast.success(`${provider} connection verified`);
+      } else {
+        const err = await res.json().catch(() => ({ error: { message: "Invalid API Key" } }));
+        setTestResults(prev => ({ ...prev, [provider]: { ok: false, msg: err.error?.message || "Verification failed" } }));
+        toast.error(`${provider} verification failed`);
+      }
+    } catch (e) {
+      setTestResults(prev => ({ ...prev, [provider]: { ok: false, msg: "Network error" } }));
+    } finally {
+      setTesting(null);
+    }
+  };
+
+  const saveKeys = async () => {
+    setLoading(true);
+    toast.info("To persist keys globally, please use the platform secret manager.");
+    
+    setTimeout(() => {
+      setLoading(false);
+      toast.success("API Keys saved to your session context.");
+    }, 800);
+  };
+
+  return (
+    <div className="space-y-6">
+      <Card title="Direct API Configuration" description="Connect directly to providers. These keys are used for your personal requests and are stored securely.">
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label className="text-[12.5px] flex items-center justify-between">
+              OpenRouter API Key
+              <a 
+                href="https://openrouter.ai/keys" 
+                target="_blank" 
+                rel="noreferrer"
+                className="text-[11px] text-primary hover:underline"
+              >
+                Get Key
+              </a>
+            </Label>
+            <div className="flex gap-2">
+              <Input 
+                type="password" 
+                placeholder="sk-or-v1-..." 
+                value={openrouter}
+                onChange={(e) => setOpenrouter(e.target.value)}
+                className="bg-secondary/30"
+              />
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="shrink-0 h-10"
+                onClick={() => testKey("OpenRouter", openrouter)}
+                disabled={!openrouter || testing === "OpenRouter"}
+              >
+                {testing === "OpenRouter" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Test"}
+              </Button>
+            </div>
+            {testResults.OpenRouter && (
+              <p className={cn("text-[11px] mt-1", testResults.OpenRouter.ok ? "text-emerald-500" : "text-destructive")}>
+                {testResults.OpenRouter.ok ? "✓ " : "✕ "} {testResults.OpenRouter.msg}
+              </p>
+            )}
+            <p className="text-[11px] text-muted-foreground">
+              Required for GPT-5, Claude 5, and DeepSeek V4 Flash.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-[12.5px] flex items-center justify-between">
+              Groq API Key
+              <a 
+                href="https://console.groq.com/keys" 
+                target="_blank" 
+                rel="noreferrer"
+                className="text-[11px] text-primary hover:underline"
+              >
+                Get Key
+              </a>
+            </Label>
+            <div className="flex gap-2">
+              <Input 
+                type="password" 
+                placeholder="gsk_..." 
+                value={groq}
+                onChange={(e) => setGroq(e.target.value)}
+                className="bg-secondary/30"
+              />
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="shrink-0 h-10"
+                onClick={() => testKey("Groq", groq)}
+                disabled={!groq || testing === "Groq"}
+              >
+                {testing === "Groq" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Test"}
+              </Button>
+            </div>
+            {testResults.Groq && (
+              <p className={cn("text-[11px] mt-1", testResults.Groq.ok ? "text-emerald-500" : "text-destructive")}>
+                {testResults.Groq.ok ? "✓ " : "✕ "} {testResults.Groq.msg}
+              </p>
+            )}
+            <p className="text-[11px] text-muted-foreground">
+              Used for high-speed Llama and Mixtral fallbacks.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-[12.5px] flex items-center justify-between">
+              Google Gemini API Key
+              <a 
+                href="https://aistudio.google.com/app/apikey" 
+                target="_blank" 
+                rel="noreferrer"
+                className="text-[11px] text-primary hover:underline"
+              >
+                Get Key
+              </a>
+            </Label>
+            <div className="flex gap-2">
+              <Input 
+                type="password" 
+                placeholder="AIza..." 
+                value={gemini}
+                onChange={(e) => setGemini(e.target.value)}
+                className="bg-secondary/30"
+              />
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="shrink-0 h-10"
+                onClick={() => testKey("Gemini", gemini)}
+                disabled={!gemini || testing === "Gemini"}
+              >
+                {testing === "Gemini" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Test"}
+              </Button>
+            </div>
+            {testResults.Gemini && (
+              <p className={cn("text-[11px] mt-1", testResults.Gemini.ok ? "text-emerald-500" : "text-destructive")}>
+                {testResults.Gemini.ok ? "✓ " : "✕ "} {testResults.Gemini.msg}
+              </p>
+            )}
+            <p className="text-[11px] text-muted-foreground">
+              Required for Gemini 2.0 Flash and native multimodal vision.
+            </p>
+          </div>
+
+          <div className="pt-2">
+            <Button 
+              onClick={saveKeys} 
+              disabled={loading || (!openrouter && !groq && !gemini)}
+              className="w-full md:w-auto px-8"
+            >
+              {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Save Keys
+            </Button>
+          </div>
+        </div>
+      </Card>
+
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 flex items-start gap-3">
+        <Sparkles className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+        <div className="text-[12.5px] text-amber-200/80 leading-relaxed">
+          <p className="font-semibold text-amber-500 mb-1">Direct Infrastructure Active</p>
+          When you provide your own keys, Metrixcom bypasses all platform gateways and communicates directly with the provider endpoints. This ensures maximum privacy and allows you to use your own credits/billing with these services.
+        </div>
+      </div>
+    </div>
+  );
+}

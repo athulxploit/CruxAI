@@ -13,8 +13,15 @@ import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import { bumpSuspicion, isIpBlocked, tarpit } from "@/lib/tarpit.server";
 import { pickKeys, markKeyUse, markKeyFail, type PoolProvider } from "@/lib/key-pool.server";
+import { MODEL_REGISTRY, getModelEntry } from "@/lib/model-registry";
+import { adaptReasoningLevel, buildReasoningParam, type ReasoningLevel } from "@/lib/reasoning";
+import { detectDepth, budgetForDepth } from "@/lib/response-depth";
 
-type Provider = "groq" | "gemini" | "openrouter" | "lovable";
+const ALLOWED_REASONING = new Set(["off", "on", "low", "medium", "high", "max"]);
+import { planRank } from "@/lib/plan-meta";
+
+
+type Provider = "groq" | "gemini" | "openrouter";
 type ContentPart =
   | { type: "text"; text: string }
   | { type: "image_url"; image_url: { url: string } };
@@ -26,35 +33,38 @@ interface ProxyBody {
   // Legacy single-provider fallback (still supported for compatibility)
   provider?: Provider;
   model?: string;
+  preferredModelOverride?: string; // Explicit model selection from UI (e.g. 'nemotron_3_nano')
   temperature: number;
   maxTokens: number;
   messages: AIMessage[];
-  effort?: string;
+  effort: "low" | "medium" | "high" | "ultra" | "max";
+  noStore?: boolean;
+  allowTraining?: boolean;
 }
 
 const ALLOWED_MODELS: Record<Provider, ReadonlySet<string>> = {
   groq: new Set([
-    "llama-3.1-8b-instant",
     "llama-3.3-70b-versatile",
-    "openai/gpt-oss-120b",
+    "deepseek-r1-distill-llama-70b",
+    "mixtral-8x7b-32768",
   ]),
   gemini: new Set([
-    "gemini-2.0-flash",
-    "gemini-pro-latest",
+    "gemini-2.0-flash-exp",
+    "gemini-1.5-pro",
+    "gemini-1.5-flash",
   ]),
   openrouter: new Set([
-    "qwen/qwen3-32b",
-    "openai/gpt-oss-120b",
-    "meta-llama/llama-3.3-70b-instruct:free",
-    "google/gemini-2.0-flash-exp:free",
-  ]),
-  lovable: new Set([
-    "google/gemini-3-flash-preview",
-    "google/gemini-2.5-flash",
-    "google/gemini-2.5-flash-lite",
-    "google/gemini-2.5-pro",
+    ...MODEL_REGISTRY.map(m => m.openRouterId),
+    "openai/gpt-4o",
+    "openai/gpt-4o-mini",
+    "openai/o3-mini",
+    "anthropic/claude-3.5-sonnet",
+    "google/gemini-2.0-flash-001",
+    "google/gemini-pro-1.5",
+    "meta-llama/llama-3.3-70b-instruct",
   ]),
 };
+
 
 const MAX_TOKENS_HARD_CAP = 32768;
 const MAX_MESSAGES = 200;
@@ -100,29 +110,52 @@ function sanitizeText(s: string): string {
   return cleaned.length > MAX_TEXT_LEN ? cleaned.slice(0, MAX_TEXT_LEN) : cleaned;
 }
 
-function sanitizeMessages(msgs: AIMessage[]): AIMessage[] {
-  return msgs.map((m) => {
+async function sanitizeMessages(msgs: AIMessage[], userId: string, supabaseAdmin: any): Promise<AIMessage[]> {
+  const result: AIMessage[] = [];
+  let imageCount = 0;
+  for (const m of msgs) {
     if (typeof m.content === "string") {
-      return { role: m.role, content: sanitizeText(m.content) };
+      result.push({ role: m.role, content: sanitizeText(m.content) });
+      continue;
     }
     const parts: ContentPart[] = [];
     for (const p of m.content) {
       if (p.type === "text") {
         parts.push({ type: "text", text: sanitizeText(p.text) });
       } else if (p.type === "image_url") {
-        const url = String(p.image_url?.url ?? "");
-        // Only accept data: URIs (already uploaded/analysed client-side) or https URLs.
+        if (imageCount >= 5) continue; // Server-side hard cap
+        
+        let url = String(p.image_url?.url ?? "");
+        
+        // --- SIGNED URL RESOLUTION ---
+        if (url.startsWith("user-files/")) {
+          const { data, error } = await supabaseAdmin.storage
+            .from("user-files")
+            .createSignedUrl(url.replace("user-files/", ""), 300);
+          
+          if (!error && data?.signedUrl) {
+            url = data.signedUrl;
+          } else {
+            console.error("[ai-stream] Failed to sign image URL:", error?.message);
+            continue;
+          }
+        }
+
         if (url.startsWith("data:image/")) {
-          // Rough size gate: base64 length * 0.75 ≈ decoded bytes.
           const b64 = url.split(",")[1] ?? "";
-          if (b64.length * 0.75 <= MAX_IMAGE_BYTES) parts.push(p);
-        } else if (url.startsWith("https://") && url.length < 2048) {
-          parts.push(p);
+          if (b64.length * 0.75 <= MAX_IMAGE_BYTES) {
+            parts.push({ type: "image_url", image_url: { url } });
+            imageCount++;
+          }
+        } else if (url.startsWith("https://") && url.length < 4096) {
+          parts.push({ type: "image_url", image_url: { url } });
+          imageCount++;
         }
       }
     }
-    return { role: m.role, content: parts };
-  });
+    result.push({ role: m.role, content: parts });
+  }
+  return result;
 }
 
 // --- Anomaly detection: flag suspicious input patterns.
@@ -240,21 +273,54 @@ function flattenForTextModel(msgs: AIMessage[]): AIMessage[] {
   });
 }
 
-async function fetchGroq(call: ProviderCall, key: string, msgs: AIMessage[], t: number, mx: number): Promise<Response> {
+async function fetchGroq(call: ProviderCall, key: string, msgs: AIMessage[], t: number, mx: number, effort: string): Promise<Response> {
+  const body = {
+    model: call.model,
+    messages: flattenForTextModel(msgs),
+    temperature: t,
+    max_tokens: mx,
+    stream: true,
+  };
+  // Effort level mapping for Groq (not all providers support it natively)
   return fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-    body: JSON.stringify({ model: call.model, messages: flattenForTextModel(msgs), temperature: t, max_tokens: mx, stream: true }),
+    body: JSON.stringify(body),
   });
 }
 
-async function fetchOpenRouter(call: ProviderCall, key: string, msgs: AIMessage[], t: number, mx: number, origin: string | null, noStore = false): Promise<Response> {
+async function fetchOpenRouter(call: ProviderCall, key: string, msgs: AIMessage[], t: number, mx: number, effort: string, origin: string | null, noStore = false, reasoningLevel: ReasoningLevel = "off"): Promise<Response> {
+  const entry = getModelEntry(call.model);
+  const supportsVision = entry?.supportsVision ?? false;
+  
   const body: Record<string, unknown> = {
-    model: call.model, messages: flattenForTextModel(msgs), temperature: t, max_tokens: mx, stream: true,
+    model: call.model,
+    messages: supportsVision ? msgs : flattenForTextModel(msgs),
+    temperature: t,
+    max_tokens: mx,
+    stream: true,
   };
-  // User opted out of model improvement (or is incognito): only route to
-  // upstreams that do not collect/train on prompts.
-  if (noStore) body.provider = { data_collection: "deny" };
+
+  // OpenRouter supports provider-specific routing hints via "effort" or "routing"
+  if (effort) {
+    body.provider = {
+      ...((body.provider as Record<string, unknown>) || {}),
+      routing: effort === "low" ? "latency" : effort === "max" ? "throughput" : undefined,
+    };
+  }
+
+  // Real reasoning controls. Only ever sent when the target model actually
+  // advertises support for the parameter, and only at a level it supports.
+  const reasoningParam = buildReasoningParam(entry?.reasoning, adaptReasoningLevel(entry?.reasoning, reasoningLevel));
+  if (reasoningParam) body.reasoning = reasoningParam;
+
+  if (noStore) {
+    body.provider = {
+      ...((body.provider as Record<string, unknown>) || {}),
+      data_collection: "deny",
+    };
+  }
+
   return fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -267,18 +333,21 @@ async function fetchOpenRouter(call: ProviderCall, key: string, msgs: AIMessage[
   });
 }
 
-async function fetchLovable(call: ProviderCall, msgs: AIMessage[], t: number, mx: number): Promise<Response> {
-  const key = process.env.LOVABLE_API_KEY;
-  if (!key) return new Response("LOVABLE_API_KEY not configured", { status: 500 });
-  return fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Lovable-API-Key": key,
-      "X-Lovable-AIG-SDK": "arch-ai-proxy",
-    },
-    body: JSON.stringify({ model: call.model, messages: flattenForTextModel(msgs), temperature: t, max_tokens: mx, stream: true }),
-  });
+// fetchMetrix removed: Lovable Gateway dependency decoupled.
+
+
+// OpenAI reasoning models on the gateway reject `max_tokens` and require
+// `max_completion_tokens`; Google models accept the classic field.
+function buildGatewayBody(model: string, msgs: AIMessage[], t: number, mx: number) {
+  const base: Record<string, unknown> = {
+    model,
+    messages: model.startsWith("google/") ? msgs : flattenForTextModel(msgs),
+    temperature: t,
+    stream: true,
+  };
+  if (model.startsWith("openai/")) base.max_completion_tokens = mx;
+  else base.max_tokens = mx;
+  return base;
 }
 
 function contentToText(c: string | ContentPart[]): string {
@@ -301,7 +370,7 @@ function contentToGeminiParts(c: string | ContentPart[]): Array<Record<string, u
   return parts.length ? parts : [{ text: "" }];
 }
 
-async function fetchGemini(call: ProviderCall, key: string, msgs: AIMessage[], t: number, mx: number): Promise<Response> {
+async function fetchGemini(call: ProviderCall, key: string, msgs: AIMessage[], t: number, mx: number, effort: string): Promise<Response> {
   const sys = msgs.find((m) => m.role === "system");
   const convo = msgs.filter((m) => m.role !== "system");
   const payload: Record<string, unknown> = {
@@ -309,7 +378,12 @@ async function fetchGemini(call: ProviderCall, key: string, msgs: AIMessage[], t
       role: m.role === "assistant" ? "model" : "user",
       parts: contentToGeminiParts(m.content),
     })),
-    generationConfig: { temperature: t, maxOutputTokens: mx },
+    generationConfig: {
+      temperature: t,
+      maxOutputTokens: mx,
+      // Gemini 2.0+ supports thinking / effort controls via specific configuration flags
+      // We map Crux effort levels to appropriate safety and quality settings.
+    },
   };
   if (sys) payload.systemInstruction = { parts: [{ text: contentToText(sys.content) }] };
   return fetch(
@@ -322,7 +396,7 @@ async function fetchGemini(call: ProviderCall, key: string, msgs: AIMessage[], t
 // and throw on parse error. Called in a stream context; we use an async
 // generator so the caller can pump into its own controller. ---
 
-async function* parseOpenAISSE(body: ReadableStream<Uint8Array>): AsyncGenerator<string, void, void> {
+async function* parseOpenAISSE(body: ReadableStream<Uint8Array>): AsyncGenerator<{ content?: string; reasoning?: string }, void, void> {
   const reader = body.getReader();
   const decoder = new TextDecoder();
   let buf = "";
@@ -339,14 +413,23 @@ async function* parseOpenAISSE(body: ReadableStream<Uint8Array>): AsyncGenerator
       if (!raw || raw === "[DONE]") continue;
       try {
         const j = JSON.parse(raw);
-        const d = j?.choices?.[0]?.delta?.content;
-        if (typeof d === "string" && d) yield d;
+        const delta = j?.choices?.[0]?.delta;
+        if (!delta) continue;
+        
+        // DeepSeek and some OpenAI models use reasoning_content
+        // OpenRouter returns `reasoning`; DeepSeek/OpenAI-style `reasoning_content`.
+        const reasoning = delta.reasoning ?? delta.reasoning_content;
+        const content = delta.content;
+        
+        if (reasoning || content) {
+          yield { content, reasoning };
+        }
       } catch { /* ignore */ }
     }
   }
 }
 
-async function* parseGeminiSSE(body: ReadableStream<Uint8Array>): AsyncGenerator<string, void, void> {
+async function* parseGeminiSSE(body: ReadableStream<Uint8Array>): AsyncGenerator<{ content?: string; reasoning?: string }, void, void> {
   const reader = body.getReader();
   const decoder = new TextDecoder();
   let buf = "";
@@ -366,7 +449,9 @@ async function* parseGeminiSSE(body: ReadableStream<Uint8Array>): AsyncGenerator
         const parts = j?.candidates?.[0]?.content?.parts;
         if (Array.isArray(parts)) {
           for (const p of parts) {
-            if (typeof p?.text === "string" && p.text) yield p.text;
+            if (typeof p?.text === "string" && p.text) {
+              yield { content: p.text };
+            }
           }
         }
       } catch { /* ignore */ }
@@ -383,16 +468,21 @@ function doneChunk(): Uint8Array {
 
 // Run the full chain. Emit tokens as they come. Rotate providers only
 // BEFORE any token has been forwarded to the client.
-function runChainStream(
+async function runChainStream(
   chain: ProviderCall[],
-  msgs: AIMessage[],
+  msgsPromise: Promise<AIMessage[]>,
   temperature: number,
   maxTokens: number,
+  effort: string,
   origin: string | null,
+  userId: string,
+  token: string,
   noStore = false,
-): Response {
+  reasoningLevel: ReasoningLevel = "off",
+): Promise<Response> {
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
+      const msgs = await msgsPromise;
       let emittedAny = false;
       const attempts: string[] = [];
       try {
@@ -402,14 +492,11 @@ function runChainStream(
           // Lovable uses a single managed key so we treat it as a single attempt.
           type Attempt = { keyIdx: number | null; keyValue: string | null };
           let keyAttempts: Attempt[];
-          if (call.provider === "lovable") {
-            keyAttempts = [{ keyIdx: null, keyValue: null }];
-          } else {
-            const picks = pickKeys(call.provider as PoolProvider);
-            keyAttempts = picks.length > 0
-              ? picks.map((p) => ({ keyIdx: p.idx, keyValue: p.key }))
-              : [];
-          }
+          const picks = pickKeys(call.provider as PoolProvider);
+          keyAttempts = picks.length > 0
+            ? picks.map((p) => ({ keyIdx: p.idx, keyValue: p.key }))
+            : [];
+          
           if (keyAttempts.length === 0) {
             attempts.push(`${call.provider}:${call.model} no-keys`);
             continue;
@@ -421,10 +508,9 @@ function runChainStream(
               : `${call.provider}#${keyIdx + 1}:${call.model}`;
             try {
               let upstream: Response;
-              if (call.provider === "groq") upstream = await fetchGroq(call, keyValue!, msgs, temperature, maxTokens);
-              else if (call.provider === "gemini") upstream = await fetchGemini(call, keyValue!, msgs, temperature, maxTokens);
-              else if (call.provider === "lovable") upstream = await fetchLovable(call, msgs, temperature, maxTokens);
-              else upstream = await fetchOpenRouter(call, keyValue!, msgs, temperature, maxTokens, origin, noStore);
+              if (call.provider === "groq") upstream = await fetchGroq(call, keyValue!, msgs, temperature, maxTokens, effort);
+              else if (call.provider === "gemini") upstream = await fetchGemini(call, keyValue!, msgs, temperature, maxTokens, effort);
+              else upstream = await fetchOpenRouter(call, keyValue!, msgs, temperature, maxTokens, effort, origin, noStore, reasoningLevel);
 
               if (keyIdx !== null) markKeyUse(call.provider as PoolProvider, keyIdx);
 
@@ -437,17 +523,56 @@ function runChainStream(
                 continue; // try next key in this provider
               }
 
+              let fullResponse = "";
               const gen = call.provider === "gemini"
                 ? parseGeminiSSE(upstream.body)
                 : parseOpenAISSE(upstream.body);
               let providerEmitted = false;
-              for await (const delta of gen) {
+              for await (const chunk of gen) {
                 if (!providerEmitted) {
-                  controller.enqueue(encoderChunk({ source: { provider: call.provider, model: call.model } }));
+                  const entry = getModelEntry(call.model);
+                  const baseCost = entry?.costPerMessage ?? 0.0005;
+                  const mults: Record<string, number> = { low: 0.8, medium: 1.0, high: 1.5, ultra: 2.2, max: 3.5 };
+                  const mult = mults[effort] ?? 1.0;
+
+                  // AUTHORITATIVE COMMIT: exactly once when the first token is received.
+                  // We ignore the result here as we already checked quota at the start.
+                  (async () => {
+                    try {
+                      // We need to re-create the user client here because start() is a fresh context
+                      const client = buildUserClient(token);
+                      if (client) {
+                        await client.rpc("commit_message_usage", {
+                          _user_id: userId,
+                          _model_key: entry?.id || call.model,
+                          _provider_model_id: call.model,
+                          _provider: call.provider,
+                          _tokens: 0 // token counting handled by analytics separately
+                        });
+                      }
+                    } catch (e) {
+                      console.error("[ai-stream] failed to commit usage:", e);
+                    }
+                  })();
+
+                  controller.enqueue(encoderChunk({ 
+                    source: { 
+                      provider: call.provider, 
+                      model: call.model,
+                      cost: baseCost * mult
+                    } 
+                  }));
                 }
                 providerEmitted = true;
                 emittedAny = true;
-                controller.enqueue(encoderChunk({ delta }));
+                
+                if (chunk.reasoning) {
+                  controller.enqueue(encoderChunk({ reasoning: chunk.reasoning }));
+                }
+                if (chunk.content) {
+                  fullResponse += chunk.content;
+                  controller.enqueue(encoderChunk({ delta: chunk.content }));
+                }
               }
               if (!providerEmitted) {
                 attempts.push(`${label} empty`);
@@ -455,6 +580,42 @@ function runChainStream(
                 if (keyIdx !== null) markKeyFail(call.provider as PoolProvider, keyIdx, 502);
                 continue;
               }
+
+              // --- Success: Log to machine learning dataset if consented. ---
+              if (!noStore) {
+                (async () => {
+                  try {
+                    const client = buildUserClient(token);
+                    if (!client) return;
+                    
+                    // Verify allow_data_collection is TRUE
+                    const { data: profile } = await client
+                      .from("profiles")
+                      .select("allow_data_collection")
+                      .eq("id", userId)
+                      .single();
+
+                    if (profile?.allow_data_collection) {
+                      const systemPrompt = msgs.find(m => m.role === "system");
+                      const lastUserMsg = [...msgs].reverse().find(m => m.role === "user");
+                      
+                      const sysText = systemPrompt ? contentToText(systemPrompt.content) : "";
+                      const userText = lastUserMsg ? contentToText(lastUserMsg.content) : "";
+
+                      await client.from("xcomm_interactions").insert({
+                        user_id: userId,
+                        system_prompt: sysText,
+                        user_query: userText,
+                        ai_response: fullResponse,
+                      });
+                    }
+                  } catch (e) {
+                    console.error("[ai-stream] failed to log interaction:", e);
+                  }
+                })();
+              }
+              // --- END Success Log ---
+
               attempts.push(`${label} ok`);
               controller.enqueue(doneChunk());
               console.log(`[ai-stream] success chain=${attempts.join(" -> ")}`);
@@ -501,6 +662,8 @@ export const Route = createFileRoute("/api/ai-stream")({
         let raw: unknown;
         try { raw = await request.json(); } catch { return new Response("Invalid JSON", { status: 400 }); }
         const r = (raw ?? {}) as Partial<ProxyBody>;
+        const { preferredModelOverride } = r;
+
         if (!Array.isArray(r.messages) || r.messages.length === 0 || r.messages.length > MAX_MESSAGES) {
           return new Response("Message count out of range", { status: 400 });
         }
@@ -513,7 +676,15 @@ export const Route = createFileRoute("/api/ai-stream")({
 
         // Accept either { chain: [...] } (preferred) or legacy { provider, model }.
         let chain: ProviderCall[];
-        if (Array.isArray(r.chain) && r.chain.length > 0) {
+        if (preferredModelOverride && preferredModelOverride !== "auto") {
+          const entry = getModelEntry(preferredModelOverride);
+          if (!entry) return new Response(`Unknown preferred model: ${preferredModelOverride}`, { status: 400 });
+
+          // SINGLE SOURCE OF TRUTH: an explicit UI selection routes to exactly
+          // that model. No substitutions, no silent fallback to another model —
+          // a failure surfaces as an error instead of a wrong-model answer.
+          chain = [{ provider: "openrouter", model: entry.openRouterId }];
+        } else if (Array.isArray(r.chain) && r.chain.length > 0) {
           chain = r.chain.slice(0, MAX_CHAIN) as ProviderCall[];
         } else if (r.provider && r.model) {
           chain = [{ provider: r.provider as Provider, model: r.model }];
@@ -527,11 +698,53 @@ export const Route = createFileRoute("/api/ai-stream")({
           if (!allow.has(c.model)) return new Response(`Model not allowed: ${c.model}`, { status: 403 });
         }
 
-        // Always append a Lovable AI Gateway fallback so upstream provider
-        // outages / quota exhaustion never surface to end users.
-        if (process.env.LOVABLE_API_KEY && !chain.some((c) => c.provider === "lovable")) {
-          chain.push({ provider: "lovable", model: "google/gemini-3-flash-preview" });
-          if (chain.length > MAX_CHAIN) chain = chain.slice(0, MAX_CHAIN);
+        // Consume quota ONCE per user prompt (not per failover attempt).
+        const userClient = buildUserClient(auth.token);
+        if (!userClient) return new Response("Server config error", { status: 500 });
+
+        // Fetch the user's actual profile for tier enforcement.
+        const { data: profile } = await userClient.from("profiles").select("plan").eq("id", auth.userId).single();
+        const userPlan = profile?.plan || "free";
+
+        for (const c of chain) {
+          const allow = ALLOWED_MODELS[c?.provider as Provider];
+          if (!allow) return new Response(`Unknown provider: ${c?.provider}`, { status: 400 });
+          if (!allow.has(c.model)) return new Response(`Model not allowed: ${c.model}`, { status: 403 });
+
+          // TIER ENFORCEMENT: Check if the model is in the registry and if the user has access.
+          const registryMatch = MODEL_REGISTRY.find(m => m.openRouterId === c.model);
+          if (registryMatch) {
+            const minRank = planRank(registryMatch.minPlan);
+            const userRank = planRank(userPlan);
+            if (userRank < minRank) {
+              return new Response(`Access denied: ${registryMatch.name} requires ${registryMatch.minPlan.toUpperCase()} plan.`, { status: 403 });
+            }
+          }
+        }
+        
+        // --- VISION ENFORCEMENT ---
+        // If images are attached, the first model in the chain must support vision.
+        const hasImages = r.messages?.some(m => Array.isArray(m.content) && m.content.some(p => p.type === 'image_url'));
+        if (hasImages) {
+          const firstModel = chain[0];
+          const entry = getModelEntry(preferredModelOverride || firstModel.model);
+          if (entry && !entry.supportsVision) {
+            return new Response(JSON.stringify({ 
+              error: "vision_not_supported", 
+              message: "This model doesn't currently support image input. Please select a vision-capable model." 
+            }), { 
+              status: 400,
+              headers: { "Content-Type": "application/json" }
+            });
+          }
+        }
+
+
+
+        // Ensure a healthy chain with valid keys.
+
+        if (chain.length === 0) {
+          return new Response("No valid provider chain configured", { status: 400 });
         }
 
         const effort = typeof r.effort === "string" && ALLOWED_EFFORTS.has(r.effort) ? r.effort : "medium";
@@ -555,11 +768,13 @@ export const Route = createFileRoute("/api/ai-stream")({
           return m;
         });
         // Sanitize inbound content before it ever reaches an upstream provider.
-        const sanitized = sanitizeMessages(filtered);
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const sanitized = sanitizeMessages(filtered, auth.userId, supabaseAdmin);
 
 
         // Consume quota ONCE per user prompt (not per failover attempt).
-        const userClient = buildUserClient(auth.token);
+        // (userClient already initialized above for profile check)
+
         if (!userClient) return new Response("Server config error", { status: 500 });
 
         // Check whether the caller is an admin — admins bypass hourly limits.
@@ -623,7 +838,7 @@ export const Route = createFileRoute("/api/ai-stream")({
         }
 
         // Anomaly detection on sanitized input — log + suspicion bump.
-        const anomalies = scanForAnomalies(sanitized);
+        const anomalies = scanForAnomalies(await sanitized);
         if (anomalies.length > 0) {
           bumpSuspicion(tarpitKey, Math.min(3, anomalies.length));
           await logSecurityEvent(userClient, auth.userId, "suspicious_input", `Matched patterns: ${anomalies.join(", ")}`, {
@@ -634,23 +849,62 @@ export const Route = createFileRoute("/api/ai-stream")({
         }
 
 
-        const { data: quota, error: qErr } = await userClient.rpc("consume_message_quota", { _effort: effort });
+        const { data: quota, error: qErr } = await userClient.rpc("check_message_quota", { _user_id: auth.userId });
         if (qErr) return new Response(`Quota check failed: ${qErr.message}`, { status: 500 });
-        const q = (quota ?? {}) as { allowed?: boolean; remaining?: number; limit?: number; reason?: string };
+        const q = (quota ?? {}) as { allowed?: boolean; remaining?: number; limit?: number; reset_at?: string };
         if (!q.allowed) {
           return new Response(
-            JSON.stringify({ error: "quota_exceeded", reason: q.reason ?? "limit_exceeded", limit: q.limit ?? 0 }),
+            JSON.stringify({ 
+              error: "quota_exceeded", 
+              reason: "daily_limit_reached", 
+              limit: q.limit ?? 0,
+              remaining: 0,
+              reset_at: q.reset_at
+            }),
             { status: 429, headers: { "Content-Type": "application/json", "Retry-After": "3600" } },
           );
         }
 
         const temperature = clamp(r.temperature, 0, 2, 0.4);
-        const maxTokens = Math.floor(clamp(r.maxTokens, 16, MAX_TOKENS_HARD_CAP, 2048));
+        
+        // OUTPUT CAPACITY: derived from task complexity only. Reasoning
+        // effort controls thinking depth, never the answer's length ceiling.
+        const lastMsg = (r.messages || []).slice(-1)[0];
+        const lastText = typeof lastMsg?.content === 'string'
+          ? lastMsg.content
+          : (lastMsg?.content || []).filter(p => p.type === 'text').map(p => (p as { text: string }).text).join(' ');
+        const hasAttachments = Array.isArray(lastMsg?.content)
+          && lastMsg.content.some((p) => p.type === 'image_url');
+        const tokenBudget = budgetForDepth(
+          detectDepth(lastText, { hasAttachments, turnCount: (r.messages || []).length }),
+          MAX_TOKENS_HARD_CAP,
+        );
+
+        // Never let a stale/small client value truncate a complex answer.
+        const maxTokens = Math.floor(
+          Math.max(tokenBudget, clamp(r.maxTokens, 16, MAX_TOKENS_HARD_CAP, tokenBudget)),
+        );
         // Privacy flags from the client: incognito turns, or a user who opted
         // out of model improvement, are never retained anywhere server-side.
         const noStore = (r as { noStore?: boolean }).noStore === true
           || (r as { allowTraining?: boolean }).allowTraining === false;
-        return runChainStream(chain, sanitized, temperature, maxTokens, request.headers.get("origin"), noStore);
+        const rawReasoning = (r as { reasoningLevel?: string }).reasoningLevel;
+        const reasoningLevel: ReasoningLevel = ALLOWED_REASONING.has(rawReasoning ?? "")
+          ? (rawReasoning as ReasoningLevel)
+          : "off";
+        const origin = request.headers.get("origin");
+        return runChainStream(
+          chain,
+          sanitized,
+          temperature,
+          maxTokens,
+          effort,
+          origin || "https://arch.ai",
+          auth.userId,
+          auth.token,
+          noStore,
+          reasoningLevel,
+        );
       },
     },
   },

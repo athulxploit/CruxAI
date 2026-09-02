@@ -20,6 +20,7 @@ import {
   Router,
   Lock,
   MonitorPlay,
+  Workflow,
   type LucideIcon,
 } from "lucide-react";
 import type { WorkspaceId } from "@/lib/workspaces";
@@ -46,4 +47,5 @@ export const WORKSPACE_ICONS: Record<WorkspaceId, LucideIcon> = {
   "password-generator": KeySquare,
   "subnet-calc": Router,
   "cipher-lab": Lock,
+  "automation-lab": Workflow,
 };

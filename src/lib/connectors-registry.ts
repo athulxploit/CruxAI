@@ -1,0 +1,82 @@
+import { type Connector, CONNECTORS } from "./connectors-catalog";
+
+/**
+ * Registry of official brand domain overrides for connectors where
+ * the name or ID doesn't directly map to their primary brand domain.
+ */
+export const BRAND_DOMAINS: Record<string, string> = {
+  "gmail-calendar": "gmail.com",
+  "gmail-calendar-prod": "gmail.com",
+  "outlook": "outlook.com",
+  "outlook-comm": "outlook.com",
+  "hubspot": "hubspot.com",
+  "hubspot-sales": "hubspot.com",
+  "monday": "monday.com",
+  "monday-ops": "monday.com",
+  "google-drive": "google.com",
+  "vercel": "vercel.com",
+  "dub": "dub.co",
+  "dnb": "dnb.com",
+  "wisesheets": "wisesheets.io",
+  "wisesheets-fin": "wisesheets.io",
+  "crunchbase": "crunchbase.com",
+  "flanks": "flanks.io",
+  "personal-cfo": "empower.com",
+  "lucid": "lucid.co",
+  "whimsical": "whimsical.com",
+  "biorender": "biorender.com",
+  "figma": "figma.com",
+  "twitch": "twitch.tv",
+  "canva": "canva.com",
+  "intercom": "intercom.com",
+  "x-twitter": "x.com",
+  "smstools": "smstools.com",
+  "z-api": "z-api.io",
+  "zoom-admin": "zoom.us",
+  "slack": "slack.com",
+  "discord": "discord.com",
+  "unwrap": "unwrap.ai",
+  "clickup": "clickup.com",
+  "clickup-sales": "clickup.com",
+  "cb-insights": "cbinsights.com",
+  "similarweb": "similarweb.com",
+  "similarweb-sales": "similarweb.com",
+  "amplitude": "amplitude.com",
+  "prisma-postgres": "prisma.io",
+  "github": "github.com",
+  "neon": "neon.tech",
+  "stytch": "stytch.com",
+  "jam": "jam.dev",
+  "datadog": "datadoghq.com",
+  "sentry": "sentry.io",
+  "carbon-arc": "carbonarc.co",
+  "link": "link.com",
+  "morningstar": "morningstar.com",
+  "base-coinbase": "coinbase.com",
+  "meow": "meow.co",
+  "health-fitness": "apple.com",
+  "benchling": "benchling.com",
+  "strava": "strava.com",
+  "atlassian": "atlassian.com",
+  "ticket-tailor": "tickettailor.com",
+  "shopify": "shopify.com",
+  "smartsheet": "smartsheet.com",
+  "carta": "carta.com",
+  "todoist": "todoist.com",
+  "cal-com": "cal.com",
+  "metaview": "metaview.ai",
+  "circleback": "circleback.ai",
+  "fireflies": "fireflies.ai",
+  "notion": "notion.so",
+  "klaviyo": "klaviyo.com",
+  "airops": "airops.com",
+  "bitly": "bitly.com",
+  "razorpay": "razorpay.com",
+};
+
+/**
+ * Returns the official brand domain for a connector.
+ */
+export function getBrandDomain(connector: Connector): string | undefined {
+  return BRAND_DOMAINS[connector.id] || connector.domain;
+}

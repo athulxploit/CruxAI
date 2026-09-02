@@ -1,7 +1,9 @@
-import { createFileRoute, Link, useNavigate, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, notFound, Outlet } from "@tanstack/react-router";
+import { cn } from "@/lib/utils";
 import { PageShell } from "@/components/arch/page-shell";
 import { WORKSPACES, WORKSPACE_PROMPT, WORKSPACE_DISCLAIMER, type WorkspaceId } from "@/lib/workspaces";
-import { ArrowLeft, MessageSquare, ShieldAlert } from "lucide-react";
+import { ArrowLeft, MessageSquare, ShieldAlert, Play, Plus, Trash2, Workflow as WorkflowIcon, Zap, Settings2, Brain, Activity } from "lucide-react";
+
 import { WORKSPACE_ICONS } from "@/lib/workspace-icons";
 import { Button } from "@/components/ui/button";
 import { store } from "@/lib/app-store";
@@ -11,6 +13,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { LiveCodePreview } from "@/components/arch/live-code-preview";
+import { WorkflowEditor } from "@/components/workflow/WorkflowEditor";
+
+
 
 const IDS: WorkspaceId[] = WORKSPACES.map((w) => w.id);
 
@@ -20,7 +25,16 @@ export const Route = createFileRoute("/workspaces/$tool")({
   },
   head: ({ params }) => {
     const w = WORKSPACES.find((x) => x.id === params.tool);
-    return { meta: [{ title: `${w?.title ?? "Workspace"} — Metrixcom` }, { name: "description", content: w?.blurb ?? "" }] };
+    return {
+      meta: [
+        { title: `${w?.title ?? "Workspace"} — Metrixcom` },
+        { name: "description", content: w?.blurb ?? "" },
+        { property: "og:title", content: `${w?.title ?? "Workspace"} | Metrixcom Professional AI Tool` },
+        { property: "og:description", content: w?.blurb ?? "" },
+        { property: "og:type", content: "website" },
+        { name: "twitter:card", content: "summary_large_image" },
+      ],
+    };
   },
   component: WorkspaceDetail,
 });
@@ -40,25 +54,53 @@ function WorkspaceDetail() {
     navigate({ to: "/" });
   };
 
+  const tabs = [
+    { id: "overview", label: "Overview", to: `/workspaces/${tool}` },
+    { id: "blueprint", label: "Blueprint", to: `/workspaces/${tool}/blueprint` },
+    { id: "tasks", label: "Tasks", to: `/workspaces/${tool}/tasks` },
+    { id: "files", label: "Files", to: `/workspaces/${tool}/files` },
+    { id: "activity", label: "Activity", to: `/workspaces/${tool}/activity` },
+  ];
+
+
   return (
     <PageShell title={w.title} description={w.tag}>
-      <div className="mx-auto max-w-5xl px-4 sm:px-6 py-6 sm:py-10">
+      <div className="mx-auto max-w-5xl px-4 sm:px-6 py-6 sm:py-10 -webkit-overflow-scrolling-touch pointer-events-auto">
         <Link to="/workspaces" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground mb-6">
           <ArrowLeft className="h-3.5 w-3.5" /> All workspaces
         </Link>
 
-        <header className="mb-6">
-          <div className="flex items-start gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-border bg-surface shadow-sm shrink-0">
-              {(() => {
-                const Icon = WORKSPACE_ICONS[w.id];
-                return <Icon className="h-6 w-6 text-primary" strokeWidth={1.75} />;
-              })()}
+        <header className="mb-8">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-4">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-border bg-surface shadow-sm shrink-0">
+                {(() => {
+                  const Icon = WORKSPACE_ICONS[w.id];
+                  return <Icon className="h-6 w-6 text-primary" strokeWidth={1.75} />;
+                })()}
+              </div>
+              <div className="flex-1">
+                <div className="text-[10px] uppercase tracking-widest text-primary/80 mb-1">{w.tag}</div>
+                <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">{w.title}</h1>
+                <p className="mt-2 text-sm text-muted-foreground max-w-2xl">{w.blurb}</p>
+              </div>
             </div>
-            <div className="flex-1">
-              <div className="text-[10px] uppercase tracking-widest text-primary/80 mb-1">{w.tag}</div>
-              <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">{w.title}</h1>
-              <p className="mt-2 text-sm text-muted-foreground max-w-2xl">{w.blurb}</p>
+            
+            <div className="hidden sm:flex items-center gap-2 p-1 bg-surface/50 rounded-xl border border-border/40">
+              {tabs.map((tab) => (
+                <Link
+                  key={tab.id}
+                  to={tab.to as any}
+                  className={cn(
+                    "px-3 py-1.5 text-xs font-medium rounded-lg transition-all",
+                    Route.fullPath.includes(tab.id) || (tab.id === 'overview' && Route.fullPath === '/workspaces/$tool')
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground hover:bg-surface"
+                  )}
+                >
+                  {tab.label}
+                </Link>
+              ))}
             </div>
           </div>
         </header>
@@ -68,23 +110,31 @@ function WorkspaceDetail() {
           <p className="text-xs text-muted-foreground">{WORKSPACE_DISCLAIMER}</p>
         </div>
 
-        <ToolBody id={w.id} onContext={setContext} />
 
-        <div className="mt-8 rounded-2xl border border-border bg-surface p-5">
-          <h3 className="text-sm font-semibold mb-2">Escalate to Metrixcom</h3>
-          <p className="text-xs text-muted-foreground mb-3">
-            Add optional context, then hand off to the AI for deeper review, missing trades, and next steps.
-          </p>
-          <Textarea
-            value={context}
-            onChange={(e) => setContext(e.target.value)}
-            placeholder="Add mission notes, constraints, or paste your computed values…"
-            className="min-h-[90px] mb-3"
-          />
-          <Button onClick={askMetrixcom} className="gap-2">
-            <MessageSquare className="h-4 w-4" /> Ask Metrixcom
-          </Button>
-        </div>
+        <Outlet />
+        
+        {Route.fullPath === '/workspaces/$tool' && (
+          <>
+            <ToolBody id={w.id} onContext={setContext} />
+
+            <div className="mt-8 rounded-2xl border border-border bg-surface p-5">
+              <h3 className="text-sm font-semibold mb-2">Escalate to Metrixcom</h3>
+              <p className="text-xs text-muted-foreground mb-3">
+                Add optional context, then hand off to the AI for deeper review, missing trades, and next steps.
+              </p>
+              <Textarea
+                value={context}
+                onChange={(e) => setContext(e.target.value)}
+                placeholder="Add mission notes, constraints, or paste your computed values…"
+                className="min-h-[90px] mb-3"
+              />
+              <Button onClick={askMetrixcom} className="gap-2">
+                <MessageSquare className="h-4 w-4" /> Ask Metrixcom
+              </Button>
+            </div>
+          </>
+        )}
+
       </div>
     </PageShell>
   );
@@ -115,11 +165,23 @@ function ToolBody({ id, onContext }: { id: WorkspaceId; onContext: (s: string) =
     case "password-generator": return <PasswordGeneratorTool onContext={onContext} />;
     case "subnet-calc": return <SubnetCalcTool onContext={onContext} />;
     case "cipher-lab": return <CipherLabTool onContext={onContext} />;
+    case "automation-lab": return (
+      <div className="flex flex-col items-center justify-center p-12 text-center border border-dashed border-border rounded-2xl bg-surface/30">
+        <WorkflowIcon className="h-12 w-12 text-primary/40 mb-4" />
+        <h3 className="text-lg font-semibold mb-2">Workflow Lab</h3>
+        <p className="text-sm text-muted-foreground max-w-md mb-6">
+          The Workflow Lab is now a dedicated full-page workspace for building production-grade automation.
+        </p>
+        <Link to="/workflows/$id" params={{ id: 'new' }}>
+          <Button size="lg" className="gap-2">
+            <Zap className="h-4 w-4" /> Open Workflow Builder
+          </Button>
+        </Link>
+      </div>
+    );
   }
 }
 
-
-/* --- shared UI --- */
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="rounded-2xl border border-border bg-surface p-5">
@@ -1211,4 +1273,38 @@ function CipherLabTool({ onContext }: { onContext: (s: string) => void }) {
     </div>
   );
 }
+
+/* --- Automation Engine (n8n style) --- */
+export function AutomationLabTool() {
+  return (
+    <div className="space-y-6">
+      <div className="rounded-2xl border border-border bg-background overflow-hidden shadow-2xl">
+        <WorkflowEditor />
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="rounded-2xl border border-border bg-surface p-6">
+          <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+            <Zap className="h-4 w-4 text-primary" /> Getting Started
+          </h3>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Metrixcom Workflows use a node-based architecture to build complex automations. 
+            Start by adding a <strong>Manual Trigger</strong> or <strong>Webhook</strong> from the left sidebar, 
+            then connect it to intelligence or integration nodes.
+          </p>
+        </div>
+        <div className="rounded-2xl border border-border bg-surface p-6">
+          <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+            <Brain className="h-4 w-4 text-primary" /> AI Nodes
+          </h3>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            The <strong>Crux AI</strong> node allows you to inject Metrixcom's intelligence into your pipeline. 
+            It can process data from previous nodes using expression mapping like <code>{"{{ $json.text }}"}</code>.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 

@@ -36,9 +36,8 @@ export function incrementUsed(uid: string | null | undefined): number {
 }
 
 export function limitsMasterOn(): boolean {
-  // Limits are OFF by default. Only ON when admin explicitly enables them.
-  if (typeof window === "undefined") return false;
-  return localStorage.getItem("arch:limits_enabled") === "true";
+  // Limits are AUTHORITATIVE on server.
+  return true;
 }
 
 export interface LimitStatus {
@@ -47,56 +46,63 @@ export interface LimitStatus {
   used: number;
   remaining: number;      // Infinity when unlimited
   blocked: boolean;       // used >= limit
-  warning: boolean;       // <=3 or <=10% left (not blocked)
+  warning: boolean;       // <=3 messages left
+  resetTime?: string;
 }
 
-export function computeStatus(limit: number | null, used: number, enforced: boolean): LimitStatus {
+export function computeStatus(limit: number | null, used: number, enforced: boolean, resetTime?: string): LimitStatus {
   if (!enforced || limit == null || limit <= 0) {
-    return { enforced: false, limit, used, remaining: Infinity, blocked: false, warning: false };
+    return { enforced: false, limit, used, remaining: Infinity, blocked: false, warning: false, resetTime };
   }
   const remaining = Math.max(0, limit - used);
   const blocked = used >= limit;
-  const warning = !blocked && (remaining <= Math.max(3, Math.ceil(limit * 0.1)));
-  return { enforced: true, limit, used, remaining, blocked, warning };
+  // Warning at exactly 3, 2, or 1 message remaining.
+  const warning = !blocked && remaining <= 3;
+  return { enforced: true, limit, used, remaining, blocked, warning, resetTime };
 }
 
 export function useMessageLimit(): LimitStatus {
   const { user, isAdmin } = useAuth();
-  const { settings } = usePlatform();
-  const [override, setOverride] = useState<number | null>(null);
-  const [used, setUsed] = useState<number>(() => readUsedToday(user?.id));
+  const [status, setStatus] = useState<LimitStatus>({
+    enforced: false,
+    limit: null,
+    used: 0,
+    remaining: Infinity,
+    blocked: false,
+    warning: false,
+  });
 
-  useEffect(() => {
-    setUsed(readUsedToday(user?.id));
-    if (!user?.id) { setOverride(null); return; }
-    let cancelled = false;
-    supabase
-      .from("user_overrides")
-      .select("msg_limit,unlimited")
-      .eq("user_id", user.id)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (cancelled) return;
-        const row = data as { msg_limit: number | null; unlimited: boolean } | null;
-        if (row?.unlimited) setOverride(null);
-        else setOverride(row?.msg_limit ?? null);
+  const fetchLimit = async () => {
+    if (!user?.id) return;
+    try {
+      const { data, error } = await supabase.rpc("check_message_quota", {
+        _user_id: user.id,
       });
-    return () => { cancelled = true; };
-  }, [user?.id]);
+      if (error) throw error;
+      const q = data as { allowed: boolean; used: number; limit: number | null; remaining: number; reset_at: string };
+      
+      const enforced = !isAdmin && q.limit !== null;
+      setStatus(computeStatus(q.limit, q.used, enforced, q.reset_at));
+    } catch (e) {
+      console.error("[msg-limit] failed to fetch quota:", e);
+    }
+  };
 
   useEffect(() => {
-    const h = () => setUsed(readUsedToday(user?.id));
+    fetchLimit();
+    
+    // Listen for successful messages to refresh
+    const h = () => fetchLimit();
     window.addEventListener("arch:msg_used", h);
-    window.addEventListener("storage", h);
+    
+    // Also refresh periodically
+    const timer = setInterval(fetchLimit, 60000);
+    
     return () => {
       window.removeEventListener("arch:msg_used", h);
-      window.removeEventListener("storage", h);
+      clearInterval(timer);
     };
-  }, [user?.id]);
+  }, [user?.id, isAdmin]);
 
-  const defaultLimit =
-    (settings?.global_limits as { daily_msg_limit?: number } | undefined)?.daily_msg_limit ?? null;
-  const effectiveLimit = override ?? defaultLimit ?? null;
-  const enforced = !!user && !isAdmin && limitsMasterOn() && effectiveLimit != null && effectiveLimit > 0;
-  return computeStatus(effectiveLimit, used, enforced);
+  return status;
 }

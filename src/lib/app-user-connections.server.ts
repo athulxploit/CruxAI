@@ -4,15 +4,17 @@ export async function saveConnectionKeyForUser(
   userId: string,
   connectorId: string,
   connectionAPIKey: string,
+  accountName?: string
 ): Promise<void> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { error } = await supabaseAdmin.from("app_user_connections").upsert(
     {
       user_id: userId,
       connector_id: connectorId,
+      account_display_name: accountName,
       connection_key_ciphertext: encryptConnectionKey(connectionAPIKey),
       updated_at: new Date().toISOString(),
-    },
+    } as any,
     { onConflict: "user_id,connector_id" },
   );
   if (error) throw error;

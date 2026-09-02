@@ -89,25 +89,46 @@ export async function hydratePrivacyCache(uid: string | null) {
   if (!uid || typeof window === "undefined") return;
   try {
     const { supabase } = await import("@/integrations/supabase/client");
+    
+    // Check profiles first for allow_data_collection
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("allow_data_collection")
+      .eq("id", uid)
+      .maybeSingle();
+      
+    if (profile && profile.allow_data_collection !== undefined) {
+      setAllowTrainingCache(profile.allow_data_collection !== false);
+    }
+
     const { data } = await supabase
       .from("user_settings")
       .select("privacy")
       .eq("user_id", uid)
       .maybeSingle();
     const privacy = (data?.privacy ?? {}) as Record<string, unknown>;
-    if (privacy.allow_training !== undefined) setAllowTrainingCache(privacy.allow_training !== false);
+    
+    // If profiles didn't have it, check user_settings
+    if (profile?.allow_data_collection === undefined && privacy.allow_training !== undefined) {
+      setAllowTrainingCache(privacy.allow_training !== false);
+    }
+    
     if (privacy.save_history !== undefined) setSaveHistoryCache(privacy.save_history !== false);
     privacyListeners.forEach((l) => l());
 
-    // Backfill: older rows predate these keys, so the choice only lived on the
-    // device. Persist the effective values so the account carries them.
+    // Backfill: ensure profile column is synced if it was missing
+    if (profile && profile.allow_data_collection === undefined) {
+      const currentVal = privacy.allow_training !== undefined ? privacy.allow_training !== false : allowTraining();
+      await supabase.from("profiles").update({ allow_data_collection: currentVal }).eq("id", uid);
+    }
+
     if (privacy.allow_training === undefined || privacy.save_history === undefined) {
       await supabase.from("user_settings").upsert(
         {
           user_id: uid,
           privacy: {
             ...privacy,
-            allow_training: privacy.allow_training !== undefined ? privacy.allow_training !== false : allowTraining(),
+            allow_training: privacy.allow_training !== undefined ? privacy.allow_training !== false : (profile?.allow_data_collection ?? allowTraining()),
             save_history: privacy.save_history !== undefined ? privacy.save_history !== false : saveHistoryEnabled(),
           },
         },

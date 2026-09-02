@@ -203,6 +203,7 @@ export type Database = {
       app_settings: {
         Row: {
           allowed_file_types: string[]
+          cloud_compute_status: string | null
           deep_research_status: string
           default_agent: string | null
           default_language: string
@@ -210,6 +211,7 @@ export type Database = {
           global_limits: Json
           google_auth_enabled: boolean
           id: number
+          local_compute_status: string | null
           logo_url: string | null
           maintenance_mode: boolean
           max_upload_mb: number
@@ -221,6 +223,7 @@ export type Database = {
         }
         Insert: {
           allowed_file_types?: string[]
+          cloud_compute_status?: string | null
           deep_research_status?: string
           default_agent?: string | null
           default_language?: string
@@ -228,6 +231,7 @@ export type Database = {
           global_limits?: Json
           google_auth_enabled?: boolean
           id?: number
+          local_compute_status?: string | null
           logo_url?: string | null
           maintenance_mode?: boolean
           max_upload_mb?: number
@@ -239,6 +243,7 @@ export type Database = {
         }
         Update: {
           allowed_file_types?: string[]
+          cloud_compute_status?: string | null
           deep_research_status?: string
           default_agent?: string | null
           default_language?: string
@@ -246,6 +251,7 @@ export type Database = {
           global_limits?: Json
           google_auth_enabled?: boolean
           id?: number
+          local_compute_status?: string | null
           logo_url?: string | null
           maintenance_mode?: boolean
           max_upload_mb?: number
@@ -259,6 +265,7 @@ export type Database = {
       }
       app_user_connections: {
         Row: {
+          account_display_name: string | null
           connection_key_ciphertext: string
           connector_id: string
           created_at: string
@@ -267,6 +274,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          account_display_name?: string | null
           connection_key_ciphertext: string
           connector_id: string
           created_at?: string
@@ -275,6 +283,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          account_display_name?: string | null
           connection_key_ciphertext?: string
           connector_id?: string
           created_at?: string
@@ -338,6 +347,142 @@ export type Database = {
         }
         Relationships: []
       }
+      blueprint_items: {
+        Row: {
+          blueprint_id: string
+          content: string | null
+          created_at: string | null
+          id: string
+          meta: Json | null
+          order_index: number | null
+          source: Database["public"]["Enums"]["blueprint_source"] | null
+          status: Database["public"]["Enums"]["blueprint_status"] | null
+          title: string
+          type: Database["public"]["Enums"]["blueprint_item_type"]
+          updated_at: string | null
+        }
+        Insert: {
+          blueprint_id: string
+          content?: string | null
+          created_at?: string | null
+          id?: string
+          meta?: Json | null
+          order_index?: number | null
+          source?: Database["public"]["Enums"]["blueprint_source"] | null
+          status?: Database["public"]["Enums"]["blueprint_status"] | null
+          title: string
+          type: Database["public"]["Enums"]["blueprint_item_type"]
+          updated_at?: string | null
+        }
+        Update: {
+          blueprint_id?: string
+          content?: string | null
+          created_at?: string | null
+          id?: string
+          meta?: Json | null
+          order_index?: number | null
+          source?: Database["public"]["Enums"]["blueprint_source"] | null
+          status?: Database["public"]["Enums"]["blueprint_status"] | null
+          title?: string
+          type?: Database["public"]["Enums"]["blueprint_item_type"]
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blueprint_items_blueprint_id_fkey"
+            columns: ["blueprint_id"]
+            isOneToOne: false
+            referencedRelation: "blueprints"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      blueprint_versions: {
+        Row: {
+          blueprint_id: string
+          created_at: string | null
+          created_by: string | null
+          id: string
+          snapshot: Json
+          version: number
+        }
+        Insert: {
+          blueprint_id: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          snapshot: Json
+          version: number
+        }
+        Update: {
+          blueprint_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          snapshot?: Json
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blueprint_versions_blueprint_id_fkey"
+            columns: ["blueprint_id"]
+            isOneToOne: false
+            referencedRelation: "blueprints"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      blueprints: {
+        Row: {
+          completeness: number | null
+          created_at: string | null
+          current_milestone: string | null
+          id: string
+          progress: number | null
+          project_type: string | null
+          protocol_id: string | null
+          status: string | null
+          tagline: string | null
+          title: string
+          updated_at: string | null
+          user_id: string
+          version: number | null
+          workspace_id: string
+        }
+        Insert: {
+          completeness?: number | null
+          created_at?: string | null
+          current_milestone?: string | null
+          id?: string
+          progress?: number | null
+          project_type?: string | null
+          protocol_id?: string | null
+          status?: string | null
+          tagline?: string | null
+          title: string
+          updated_at?: string | null
+          user_id: string
+          version?: number | null
+          workspace_id: string
+        }
+        Update: {
+          completeness?: number | null
+          created_at?: string | null
+          current_milestone?: string | null
+          id?: string
+          progress?: number | null
+          project_type?: string | null
+          protocol_id?: string | null
+          status?: string | null
+          tagline?: string | null
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+          version?: number | null
+          workspace_id?: string
+        }
+        Relationships: []
+      }
       broadcasts: {
         Row: {
           body: string
@@ -397,6 +542,91 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      computer_audit_logs: {
+        Row: {
+          action: string
+          created_at: string | null
+          device_id: string | null
+          id: string
+          meta: Json | null
+          reason: string | null
+          risk_level: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          device_id?: string | null
+          id?: string
+          meta?: Json | null
+          reason?: string | null
+          risk_level?: string | null
+          status: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          device_id?: string | null
+          id?: string
+          meta?: Json | null
+          reason?: string | null
+          risk_level?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "computer_audit_logs_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "user_devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      computer_permissions: {
+        Row: {
+          capability: string
+          device_id: string | null
+          granted: boolean | null
+          id: string
+          risk_level: string | null
+          scope: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          capability: string
+          device_id?: string | null
+          granted?: boolean | null
+          id?: string
+          risk_level?: string | null
+          scope?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          capability?: string
+          device_id?: string | null
+          granted?: boolean | null
+          id?: string
+          risk_level?: string | null
+          scope?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "computer_permissions_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "user_devices"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       connected_apps: {
         Row: {
@@ -786,6 +1016,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          allow_data_collection: boolean | null
           avatar_url: string | null
           banned_at: string | null
           country: string | null
@@ -807,6 +1038,7 @@ export type Database = {
           username: string | null
         }
         Insert: {
+          allow_data_collection?: boolean | null
           avatar_url?: string | null
           banned_at?: string | null
           country?: string | null
@@ -828,6 +1060,7 @@ export type Database = {
           username?: string | null
         }
         Update: {
+          allow_data_collection?: boolean | null
           avatar_url?: string | null
           banned_at?: string | null
           country?: string | null
@@ -1022,6 +1255,51 @@ export type Database = {
         }
         Relationships: []
       }
+      user_devices: {
+        Row: {
+          app_version: string | null
+          created_at: string | null
+          id: string
+          last_seen_at: string | null
+          metadata: Json | null
+          name: string
+          os: string | null
+          os_version: string | null
+          status: string
+          type: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          app_version?: string | null
+          created_at?: string | null
+          id?: string
+          last_seen_at?: string | null
+          metadata?: Json | null
+          name: string
+          os?: string | null
+          os_version?: string | null
+          status?: string
+          type: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          app_version?: string | null
+          created_at?: string | null
+          id?: string
+          last_seen_at?: string | null
+          metadata?: Json | null
+          name?: string
+          os?: string | null
+          os_version?: string | null
+          status?: string
+          type?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_overrides: {
         Row: {
           created_at: string
@@ -1154,11 +1432,251 @@ export type Database = {
         }
         Relationships: []
       }
+      workflow_credentials: {
+        Row: {
+          created_at: string
+          encrypted_data: string | null
+          id: string
+          name: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          encrypted_data?: string | null
+          id?: string
+          name: string
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          encrypted_data?: string | null
+          id?: string
+          name?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      workflow_executions: {
+        Row: {
+          created_at: string
+          end_time: string | null
+          execution_data: Json | null
+          id: string
+          input: Json | null
+          logs: Json | null
+          output: Json | null
+          start_time: string | null
+          status: Database["public"]["Enums"]["execution_status"]
+          user_id: string
+          workflow_id: string
+        }
+        Insert: {
+          created_at?: string
+          end_time?: string | null
+          execution_data?: Json | null
+          id?: string
+          input?: Json | null
+          logs?: Json | null
+          output?: Json | null
+          start_time?: string | null
+          status?: Database["public"]["Enums"]["execution_status"]
+          user_id: string
+          workflow_id: string
+        }
+        Update: {
+          created_at?: string
+          end_time?: string | null
+          execution_data?: Json | null
+          id?: string
+          input?: Json | null
+          logs?: Json | null
+          output?: Json | null
+          start_time?: string | null
+          status?: Database["public"]["Enums"]["execution_status"]
+          user_id?: string
+          workflow_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_executions_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "workflows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workflows: {
+        Row: {
+          created_at: string
+          description: string | null
+          edges: Json
+          id: string
+          name: string
+          nodes: Json
+          status: Database["public"]["Enums"]["workflow_status"]
+          updated_at: string
+          user_id: string
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          edges?: Json
+          id?: string
+          name: string
+          nodes?: Json
+          status?: Database["public"]["Enums"]["workflow_status"]
+          updated_at?: string
+          user_id: string
+          version?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          edges?: Json
+          id?: string
+          name?: string
+          nodes?: Json
+          status?: Database["public"]["Enums"]["workflow_status"]
+          updated_at?: string
+          user_id?: string
+          version?: number
+        }
+        Relationships: []
+      }
+      xcomm_interactions: {
+        Row: {
+          ai_response: string | null
+          created_at: string | null
+          id: string
+          system_prompt: string | null
+          user_id: string | null
+          user_query: string | null
+          user_rating: string | null
+        }
+        Insert: {
+          ai_response?: string | null
+          created_at?: string | null
+          id?: string
+          system_prompt?: string | null
+          user_id?: string | null
+          user_query?: string | null
+          user_rating?: string | null
+        }
+        Update: {
+          ai_response?: string | null
+          created_at?: string | null
+          id?: string
+          system_prompt?: string | null
+          user_id?: string | null
+          user_query?: string | null
+          user_rating?: string | null
+        }
+        Relationships: []
+      }
+      xcomm_model_usage: {
+        Row: {
+          conversation_id: string | null
+          created_at: string
+          error_message: string | null
+          has_image: boolean | null
+          id: string
+          image_count: number | null
+          input_tokens: number
+          latency_ms: number | null
+          model_key: string
+          output_tokens: number
+          provider: string
+          provider_model_id: string
+          status: Database["public"]["Enums"]["model_usage_status"]
+          total_tokens: number
+          user_id: string | null
+        }
+        Insert: {
+          conversation_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          has_image?: boolean | null
+          id?: string
+          image_count?: number | null
+          input_tokens?: number
+          latency_ms?: number | null
+          model_key: string
+          output_tokens?: number
+          provider: string
+          provider_model_id: string
+          status?: Database["public"]["Enums"]["model_usage_status"]
+          total_tokens?: number
+          user_id?: string | null
+        }
+        Update: {
+          conversation_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          has_image?: boolean | null
+          id?: string
+          image_count?: number | null
+          input_tokens?: number
+          latency_ms?: number | null
+          model_key?: string
+          output_tokens?: number
+          provider?: string
+          provider_model_id?: string
+          status?: Database["public"]["Enums"]["model_usage_status"]
+          total_tokens?: number
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      xcomm_test_logs: {
+        Row: {
+          created_at: string | null
+          error_message: string | null
+          id: string
+          latency_ms: number | null
+          model_id: string
+          prompt: string
+          response: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          latency_ms?: number | null
+          model_id: string
+          prompt: string
+          response?: string | null
+          status: string
+        }
+        Update: {
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          latency_ms?: number | null
+          model_id?: string
+          prompt?: string
+          response?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      check_message_quota: {
+        Args: { _tz?: string; _user_id: string }
+        Returns: Json
+      }
       check_promo: {
         Args: { _code: string }
         Returns: {
@@ -1170,7 +1688,61 @@ export type Database = {
           valid: boolean
         }[]
       }
+      commit_message_usage: {
+        Args: {
+          _conversation_id?: string
+          _model_key: string
+          _provider: string
+          _provider_model_id: string
+          _tokens?: number
+          _tz?: string
+          _user_id: string
+        }
+        Returns: Json
+      }
       consume_message_quota: { Args: { _effort?: string }; Returns: Json }
+      get_model_leaderboard: {
+        Args: { _days?: number }
+        Returns: {
+          count: number
+          model_key: string
+        }[]
+      }
+      get_model_multimodal_stats: {
+        Args: { _days?: number }
+        Returns: {
+          failed_requests: number
+          model_id: string
+          requests_with_images: number
+          successful_requests: number
+          total_images: number
+          total_requests: number
+          total_tokens: number
+        }[]
+      }
+      get_model_usage_stats: {
+        Args: { _days?: number }
+        Returns: {
+          count: number
+          status: string
+        }[]
+      }
+      get_performance_analytics: { Args: { _days?: number }; Returns: Json }
+      get_plan_distribution: {
+        Args: never
+        Returns: {
+          count: number
+          plan: string
+        }[]
+      }
+      get_usage_window_start: { Args: { tz?: string }; Returns: string }
+      get_user_growth: {
+        Args: { _days?: number }
+        Returns: {
+          count: number
+          date: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1240,8 +1812,46 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
+      blueprint_item_type:
+        | "vision"
+        | "objective"
+        | "requirement"
+        | "feature"
+        | "architecture"
+        | "technology"
+        | "decision"
+        | "constraint"
+        | "milestone"
+        | "task"
+        | "question"
+        | "issue"
+        | "file"
+        | "workflow"
+        | "test"
+        | "state"
+        | "history"
+      blueprint_source:
+        | "user"
+        | "ai_recommendation"
+        | "ai_inferred"
+        | "unresolved"
+      blueprint_status:
+        | "planned"
+        | "in_progress"
+        | "completed"
+        | "blocked"
+        | "cancelled"
+      execution_status:
+        | "queued"
+        | "running"
+        | "waiting"
+        | "success"
+        | "failed"
+        | "stopped"
+      model_usage_status: "success" | "error" | "timeout"
       user_plan: "free" | "standard" | "pro" | "proplus"
       user_status: "active" | "suspended" | "banned"
+      workflow_status: "draft" | "active" | "inactive"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1370,8 +1980,50 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "moderator", "user"],
+      blueprint_item_type: [
+        "vision",
+        "objective",
+        "requirement",
+        "feature",
+        "architecture",
+        "technology",
+        "decision",
+        "constraint",
+        "milestone",
+        "task",
+        "question",
+        "issue",
+        "file",
+        "workflow",
+        "test",
+        "state",
+        "history",
+      ],
+      blueprint_source: [
+        "user",
+        "ai_recommendation",
+        "ai_inferred",
+        "unresolved",
+      ],
+      blueprint_status: [
+        "planned",
+        "in_progress",
+        "completed",
+        "blocked",
+        "cancelled",
+      ],
+      execution_status: [
+        "queued",
+        "running",
+        "waiting",
+        "success",
+        "failed",
+        "stopped",
+      ],
+      model_usage_status: ["success", "error", "timeout"],
       user_plan: ["free", "standard", "pro", "proplus"],
       user_status: ["active", "suspended", "banned"],
+      workflow_status: ["draft", "active", "inactive"],
     },
   },
 } as const

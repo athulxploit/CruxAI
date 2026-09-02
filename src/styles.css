@@ -43,7 +43,26 @@
   --color-sidebar-ring: var(--sidebar-ring);
   --shadow-elegant: 0 1px 2px 0 oklch(0 0 0 / 0.4), 0 8px 24px -8px oklch(0 0 0 / 0.5);
   --shadow-subtle: 0 1px 0 0 oklch(1 0 0 / 0.03) inset, 0 1px 2px 0 oklch(0 0 0 / 0.3);
+
+  @keyframes workflow-flow {
+    from { stroke-dashoffset: 16; }
+    to { stroke-dashoffset: 0; }
+  }
 }
+
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+@utility bg-dot-grid {
+  background-image: radial-gradient(var(--border) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+@utility animate-workflow-flow {
+  animation: workflow-flow 1s linear infinite;
+}
+
 
 :root,
 .dark {
@@ -78,6 +97,7 @@
   --sidebar-accent-foreground: oklch(0.96 0.003 260);
   --sidebar-border: oklch(1 0 0 / 5%);
   --sidebar-ring: var(--accent-color, oklch(0.72 0.14 250));
+  --openai-icon-filter: grayscale(1) brightness(1.5) contrast(0.75);
 }
 
 .light {
@@ -111,6 +131,53 @@
   --sidebar-accent-foreground: oklch(0.2 0.005 260);
   --sidebar-border: oklch(0 0 0 / 7%);
   --sidebar-ring: var(--accent-color, oklch(0.6 0.16 250));
+  --openai-icon-filter: invert(1);
+}
+
+/* Studio — warm, calm, editorial light theme */
+.studio {
+  --background: oklch(0.972 0.008 85);
+  --foreground: oklch(0.245 0.012 60);
+  --surface: oklch(0.955 0.010 84);
+  --surface-elevated: oklch(0.985 0.006 85);
+  --card: oklch(0.983 0.006 85);
+  --card-foreground: oklch(0.245 0.012 60);
+  --popover: oklch(0.986 0.005 85);
+  --popover-foreground: oklch(0.245 0.012 60);
+  --primary: oklch(0.30 0.014 60);
+  --primary-foreground: oklch(0.985 0.005 85);
+  --secondary: oklch(0.945 0.011 84);
+  --secondary-foreground: oklch(0.28 0.013 60);
+  --muted: oklch(0.945 0.011 84);
+  --muted-foreground: oklch(0.505 0.014 65);
+  --accent: var(--accent-color, oklch(0.57 0.10 45));
+  --accent-foreground: oklch(0.985 0.005 85);
+  --destructive: oklch(0.55 0.17 28);
+  --destructive-foreground: oklch(0.985 0.005 85);
+  --border: oklch(0.36 0.02 60 / 12%);
+  --border-strong: oklch(0.36 0.02 60 / 20%);
+  --input: oklch(0.36 0.02 60 / 9%);
+  --ring: var(--accent-color, oklch(0.57 0.10 45));
+  --sidebar: oklch(0.948 0.012 84);
+  --sidebar-foreground: oklch(0.30 0.013 60);
+  --sidebar-primary: oklch(0.30 0.014 60);
+  --sidebar-primary-foreground: oklch(0.985 0.005 85);
+  --sidebar-accent: oklch(0.915 0.014 82);
+  --sidebar-accent-foreground: oklch(0.26 0.013 60);
+  --sidebar-border: oklch(0.36 0.02 60 / 11%);
+  --sidebar-ring: var(--accent-color, oklch(0.57 0.10 45));
+  --openai-icon-filter: invert(1);
+  --shadow-elegant: 0 1px 2px 0 oklch(0.3 0.02 60 / 0.06), 0 8px 24px -12px oklch(0.3 0.02 60 / 0.12);
+  --shadow-subtle: 0 1px 2px 0 oklch(0.3 0.02 60 / 0.05);
+}
+
+/* Studio reading comfort + code readability */
+.studio .arch-markdown { line-height: 1.78; }
+html.studio pre,
+html.studio code:not(pre code) {
+  background: oklch(0.945 0.012 84);
+  color: oklch(0.26 0.013 60);
+  border: 1px solid oklch(0.36 0.02 60 / 12%);
 }
 
 /* Density */
@@ -150,7 +217,8 @@
 .radius-pill    { --radius: 1.75rem; }
 
 /* Sidebar collapsed default state */
-.sidebar-collapsed .arch-sidebar-desktop { display: none !important; }
+/* Sidebar collapsed default state - removed display:none to allow JS to handle visibility via width */
+/* .sidebar-collapsed .arch-sidebar-desktop { display: none !important; } */
 
 /* Code theme (independent of app theme) */
 .code-dark pre, .code-dark code:not(pre code) {
@@ -170,7 +238,55 @@ code:not(pre code) { padding: 0.15rem 0.35rem; border-radius: var(--radius-sm); 
 @layer base {
   * {
     border-color: var(--color-border);
+    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
   }
+  
+  /* Modern Premium Scrollbar styling */
+  @media (min-width: 768px) {
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: oklch(1 0 0 / 12%) transparent;
+    }
+    
+    .overflow-y-auto, .overflow-y-scroll, .overflow-auto, .overflow-x-auto {
+      scrollbar-gutter: auto;
+    }
+
+    *::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    *::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    *::-webkit-scrollbar-thumb {
+      background: oklch(1 0 0 / 12%);
+      border-radius: 10px;
+      transition: background 0.2s ease;
+      border: 1px solid transparent;
+      background-clip: content-box;
+    }
+
+    *::-webkit-scrollbar-thumb:hover {
+      background: oklch(1 0 0 / 22%);
+      background-clip: content-box;
+    }
+
+    *::-webkit-scrollbar-corner {
+      background: transparent;
+    }
+  }
+
+  /* Fix for scrolling not working with mouse scroll in fixed containers */
+  .overflow-y-auto, .overflow-y-scroll, .overflow-auto {
+    pointer-events: auto !important;
+    isolation: isolate;
+  }
+
   html,
   body {
     background-color: var(--color-background);
@@ -178,10 +294,28 @@ code:not(pre code) { padding: 0.15rem 0.35rem; border-radius: var(--radius-sm); 
     font-family: var(--font-sans);
     font-feature-settings: "cv02", "cv03", "cv04", "cv11", "ss01";
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+    overscroll-behavior-y: none;
+    height: 100vh;
+    width: 100vw;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    position: relative;
+    pointer-events: auto;
+    -webkit-tap-highlight-color: transparent;
   }
   html.dark { color-scheme: dark; }
   html.light { color-scheme: light; }
+}
+
+/* Momentum (Inertial) Scrolling Smoothness */
+.overflow-y-auto, .overflow-auto, .overflow-x-auto {
+  -webkit-overflow-scrolling: touch !important;
+  scroll-behavior: auto; /* Changed from smooth to auto for more predictable mouse-wheel response */
+  /* Optimize for trackpad inertia */
+  will-change: scroll-position;
 }
 
 /* Aurora glow for user messages sent with web search / deep research */

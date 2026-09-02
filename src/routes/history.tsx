@@ -1,7 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { PageShell } from "@/components/arch/page-shell";
 import { store, useApp } from "@/lib/app-store";
-import { getAgent } from "@/lib/agents";
 
 import { MessageSquare, Trash2, Pin, PinOff, Pencil } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
@@ -10,7 +9,16 @@ import { usePlatform } from "@/lib/platform";
 import { tryTogglePin } from "@/lib/pin-limit";
 
 export const Route = createFileRoute("/history")({
-  head: () => ({ meta: [{ title: "Chat History — Metrixcom" }] }),
+  head: () => ({
+    meta: [
+      { title: "Chat History — Metrixcom" },
+      { name: "description", content: "Access and manage your past conversations with Metrixcom AI agents. Pinned and searchable history." },
+      { property: "og:title", content: "Metrixcom Chat History" },
+      { property: "og:description", content: "Your professional AI conversation history." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: History,
 });
 
@@ -27,6 +35,7 @@ function History() {
 
   return (
     <PageShell title="Chat History" description="Your recent conversations across all agents.">
+      <div className="min-h-0 -webkit-overflow-scrolling-touch pointer-events-auto">
       {chats.length === 0 ? (
         <div className="rounded-xl border border-border bg-surface p-12 text-center">
           <MessageSquare className="h-6 w-6 mx-auto text-muted-foreground" />
@@ -47,6 +56,7 @@ function History() {
           ))}
         </div>
       )}
+      </div>
     </PageShell>
   );
 }
@@ -60,7 +70,6 @@ function HistoryRow({
   pinLimit: number | undefined;
   onOpen: () => void;
 }) {
-  const agent = getAgent(c.agent);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(c.title);
 
@@ -100,7 +109,7 @@ function HistoryRow({
           </div>
         )}
         <div className="text-[11.5px] text-muted-foreground">
-          {agent.name} · {formatDistanceToNow(c.updatedAt, { addSuffix: true })}
+          {"Metrixcom"} · {formatDistanceToNow(c.updatedAt, { addSuffix: true })}
         </div>
       </div>
       <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">

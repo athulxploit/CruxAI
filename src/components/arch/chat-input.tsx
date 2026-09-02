@@ -2,18 +2,27 @@ import { useRef, useState } from "react";
 import {
   Paperclip,
   ArrowUp,
-  Camera,
-  Image as ImageIcon,
   File,
   Globe,
   Search,
   Sparkles,
   X,
-  HardDrive,
-  Github,
+  Monitor,
+  Puzzle,
+  ChevronRight,
+  Camera,
+  Image as ImageIcon,
+  Loader2,
 } from "lucide-react";
 import { store, useApp } from "@/lib/app-store";
-import { AGENTS, EFFORT_LEVELS, getAgent } from "@/lib/agents";
+import { EFFORT_LEVELS } from "@/lib/agents";
+import {
+  REASONING_META,
+  adaptReasoningLevel,
+  reasoningLevelsFor,
+  type ReasoningLevel,
+} from "@/lib/reasoning";
+import { Brain } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -32,31 +41,41 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { usePlatform } from "@/lib/platform";
 import { toast } from "sonner";
-import { isArchModeOn, pickAgentForPrompt, setArchMode } from "@/lib/arch-mode";
+import { isArchModeOn, setArchMode } from "@/lib/arch-mode";
 import { useEffect } from "react";
-import { useAgentsConfig, useAgentsConfigState, isAgentAvailable, diagnoseAgent } from "@/lib/agents-config";
+// Legacy agents-config import removed
 import { useMessageLimit, incrementUsed } from "@/lib/msg-limit";
 import { useRateLimit } from "@/lib/rate-limit";
 import { AlertTriangle, Ban, Clock } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { PrivacyDisclaimer } from "./privacy-disclaimer";
-import { DrivePicker } from "./drive-picker";
-import { GithubPicker } from "./github-picker";
+import { PluginDirectory } from "./plugin-directory";
+import { ModelSelector } from "./model-selector";
+import { loadIntelligence, saveIntelligence, subscribeIntelligence } from "@/lib/intelligence";
+import { getModelEntry } from "@/lib/model-registry";
+import { getModeMeta, WORKSPACE_MODE_EVENT } from "@/lib/workspace-mode";
 
-interface Attachment {
+export interface Attachment {
+  id: string;
   name: string;
   size: number;
-  path: string;
+  path?: string;
   mime?: string;
+  localUrl?: string;
+  status: 'uploading' | 'ready' | 'error';
+  error?: string;
 }
 
 export function ChatInput() {
+  const workspaceMode = useApp((s) => s.workspaceMode);
+  const modeMeta = getModeMeta(workspaceMode);
+  const modeTools = modeMeta.tools;
+  const placeholder = modeMeta.placeholder;
   const [value, setValue] = useState("");
   const [webSearch, setWebSearch] = useState(false);
   const [deepResearch, setDeepResearch] = useState(false);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
-  const [drivePickerOpen, setDrivePickerOpen] = useState(false);
-  const [ghPickerOpen, setGhPickerOpen] = useState(false);
+  const [pluginsOpen, setPluginsOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [archOn, setArchOn] = useState<boolean>(() => isArchModeOn());
   useEffect(() => {
@@ -64,23 +83,52 @@ export function ChatInput() {
     window.addEventListener("arch:arch_mode", h);
     return () => window.removeEventListener("arch:arch_mode", h);
   }, []);
+  // Transient composer state must not carry across modes.
+  useEffect(() => {
+    const h = () => {
+      setValue("");
+      setWebSearch(false);
+      setDeepResearch(false);
+      setPluginsOpen(false);
+      setAttachments((prev) => {
+        prev.forEach((a) => { if (a.localUrl) URL.revokeObjectURL(a.localUrl); });
+        return [];
+      });
+      requestAnimationFrame(() => {
+        const el = ref.current;
+        if (el) { el.style.height = "auto"; }
+      });
+    };
+    window.addEventListener(WORKSPACE_MODE_EVENT, h);
+    return () => window.removeEventListener(WORKSPACE_MODE_EVENT, h);
+  }, []);
+
   const ref = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imgInputRef = useRef<HTMLInputElement>(null);
   const camInputRef = useRef<HTMLInputElement>(null);
-  const agentId = useApp((s) => s.agent);
+  // Legacy agent-related state removed
   const cipherMode = useApp((s) => s.cipherMode);
   const effort = useApp((s) => s.effort);
-  const agent = getAgent(agentId);
+  const computer = useApp((s) => s.computer);
+  // Unified intelligence personality
+  const agent = { name: "Metrixcom Engine" };
   const { user, isAdmin, loading: authLoading } = useAuth();
   const { flags, settings } = usePlatform();
-  const agentsState = useAgentsConfigState();
-  const agentConfigs = agentsState.configs;
-  const availability = isAgentAvailable(agentConfigs, agentId);
-  const diagnostic = diagnoseAgent(agentsState, agentId);
+  // Legacy agent-config hooks removed
   const limit = useMessageLimit();
   const rl = useRateLimit();
-  const blocked = (!authLoading && !isAdmin && !availability.ok) || limit.blocked || rl.active;
+
+  const [prefs, setPrefs] = useState(() => loadIntelligence());
+  useEffect(() => subscribeIntelligence(setPrefs), []);
+  const selectedModelId = prefs.preferred_model || "auto";
+  const modelEntry = getModelEntry(selectedModelId);
+  const supportsVision = modelEntry?.supportsVision ?? false;
+  const hasImages = attachments.some(a => a.mime?.startsWith("image/"));
+  const visionWarning = hasImages && !supportsVision;
+
+  const blocked = (!authLoading && !isAdmin && false) || limit.blocked || rl.active || visionWarning;
+  const canSend = (value.trim() || attachments.length > 0) && !uploading && !blocked && attachments.every(a => a.status === 'ready');
 
   // Warn once per threshold as the user approaches / hits their daily cap.
   useEffect(() => {
@@ -120,6 +168,7 @@ export function ChatInput() {
   }, [limit.enforced, limit.remaining, limit.blocked, limit.limit, user?.id]);
   const maxMb = settings?.global_limits?.max_upload_size_mb ?? settings?.max_upload_mb ?? 20;
   const maxAttach = settings?.global_limits?.max_attachments ?? 10;
+  const maxImages = 5;
 
   function autoresize() {
     const el = ref.current;
@@ -128,12 +177,51 @@ export function ChatInput() {
     el.style.height = Math.min(el.scrollHeight, 220) + "px";
   }
 
+  async function optimizeImage(file: File): Promise<Blob | File> {
+    if (!file.type.startsWith("image/") || file.size < 1024 * 1024) return file;
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX_DIM = 2048;
+        let w = img.width;
+        let h = img.height;
+        if (w > MAX_DIM || h > MAX_DIM) {
+          if (w > h) {
+            h = Math.round((h * MAX_DIM) / w);
+            w = MAX_DIM;
+          } else {
+            w = Math.round((w * MAX_DIM) / h);
+            h = MAX_DIM;
+          }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        ctx?.drawImage(img, 0, 0, w, h);
+        canvas.toBlob((blob) => resolve(blob || file), "image/jpeg", 0.85);
+      };
+      img.onerror = () => resolve(file);
+      img.src = URL.createObjectURL(file);
+    });
+  }
+
   async function handleFiles(list: FileList | null) {
     if (!list || !user) return;
-    setUploading(true);
-    const added: Attachment[] = [];
-    for (const file of Array.from(list)) {
-      if (attachments.length + added.length >= maxAttach) {
+    
+    const files = Array.from(list);
+    const existingImages = attachments.filter(a => a.mime?.startsWith("image/")).length;
+    let addedImages = 0;
+
+    const newAttachments: Attachment[] = [];
+    
+    for (const file of files) {
+      const isImage = file.type.startsWith("image/");
+      if (isImage && (existingImages + addedImages >= maxImages)) {
+        toast.error(`Max ${maxImages} images per message`);
+        continue;
+      }
+      if (attachments.length + newAttachments.length >= maxAttach) {
         toast.error(`Max ${maxAttach} attachments`);
         break;
       }
@@ -141,62 +229,84 @@ export function ChatInput() {
         toast.error(`${file.name} exceeds ${maxMb}MB`);
         continue;
       }
-      const path = `${user.id}/${crypto.randomUUID()}-${file.name}`;
-      const { error } = await supabase.storage
-        .from("user-files")
-        .upload(path, file, { contentType: file.type || "application/octet-stream" });
-      if (error) {
-        toast.error(error.message);
-        continue;
-      }
-      await supabase.from("files").insert({
-        user_id: user.id,
+
+      const id = crypto.randomUUID();
+      const localUrl = isImage ? URL.createObjectURL(file) : undefined;
+      
+      const att: Attachment = {
+        id,
         name: file.name,
-        mime: file.type || null,
-        size_bytes: file.size,
-        storage_path: path,
-      });
-      added.push({ name: file.name, size: file.size, path, mime: file.type || undefined });
+        size: file.size,
+        mime: file.type || undefined,
+        localUrl,
+        status: 'uploading'
+      };
+      
+      newAttachments.push(att);
+      if (isImage) addedImages++;
     }
-    setAttachments((a) => [...a, ...added]);
+
+    if (newAttachments.length === 0) return;
+
+    setAttachments(prev => [...prev, ...newAttachments]);
+    setUploading(true);
+
+    const uploadFile = async (att: Attachment, originalFile: File) => {
+      try {
+        const fileToUpload = att.mime?.startsWith("image/") 
+          ? await optimizeImage(originalFile)
+          : originalFile;
+          
+        const path = `${user.id}/${crypto.randomUUID()}-${att.name}`;
+        const { error } = await supabase.storage
+          .from("user-files")
+          .upload(path, fileToUpload, { 
+            contentType: att.mime || "application/octet-stream",
+            upsert: true
+          });
+
+        if (error) throw error;
+
+        await supabase.from("files").insert({
+          user_id: user.id,
+          name: att.name,
+          mime: att.mime || null,
+          size_bytes: att.size,
+          storage_path: path,
+        });
+
+        setAttachments(prev => prev.map(a => 
+          a.id === att.id ? { ...a, status: 'ready', path } : a
+        ));
+      } catch (err: any) {
+        toast.error(`Failed to upload ${att.name}`);
+        setAttachments(prev => prev.map(a => 
+          a.id === att.id ? { ...a, status: 'error', error: err.message } : a
+        ));
+      }
+    };
+
+    // Parallel upload with controlled concurrency (3)
+    const queue = [...newAttachments.map((att, i) => ({ att, file: files[i] }))];
+    const workers = Array(Math.min(3, queue.length)).fill(null).map(async () => {
+      while (queue.length > 0) {
+        const item = queue.shift();
+        if (item) await uploadFile(item.att, item.file);
+      }
+    });
+
+    await Promise.all(workers);
     setUploading(false);
-    if (added.length) toast.success(`${added.length} file(s) attached`);
   }
 
   function send() {
     const text = value.trim();
-    if (!text && attachments.length === 0) return;
-    let effectiveAgent = agentId;
-    if (text && isArchModeOn()) {
-      const picked = pickAgentForPrompt(text);
-      // If Metrixcom picked an unavailable agent, fall back to first available
-      const pickedAvail = isAgentAvailable(agentConfigs, picked);
-      if (!isAdmin && !pickedAvail.ok) {
-        const fallback = AGENTS.find((a) => isAgentAvailable(agentConfigs, a.id).ok);
-        if (!fallback) {
-          toast.error("All agents are currently unavailable.");
-          return;
-        }
-        effectiveAgent = fallback.id;
-      } else {
-        effectiveAgent = picked;
-      }
-      if (effectiveAgent !== agentId) store.setAgent(effectiveAgent);
-    }
-    const avail = isAgentAvailable(agentConfigs, effectiveAgent);
-    if (!isAdmin && !avail.ok) {
-      toast.error(
-        avail.reason === "maintenance"
-          ? `${getAgent(effectiveAgent).name} is under maintenance.`
-          : `${getAgent(effectiveAgent).name} is currently disabled.`,
-      );
-      return;
-    }
+    // Direct model routing. Legacy agent auto-selection removed.
     if (limit.blocked || rl.active) {
-      // Banner above the composer communicates this — no chat spam.
       return;
     }
-    const mode: "web" | "deep" | null = deepResearch ? "deep" : webSearch ? "web" : null;
+    const mode: "web" | "deep" | null =
+      deepResearch && modeTools.deepResearch ? "deep" : webSearch && modeTools.webSearch ? "web" : null;
     store.sendMessage(text, { mode, attachments });
     haptic("medium");
     if (!isAdmin) incrementUsed(user?.id);
@@ -206,7 +316,7 @@ export function ChatInput() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 pb-6">
+    <div className="mx-auto w-full max-w-3xl px-4 pb-4 sm:pb-6">
       <input
         ref={fileInputRef}
         type="file"
@@ -274,44 +384,139 @@ export function ChatInput() {
           <div className="leading-relaxed">
             {limit.blocked ? (
               <>
-                <span className="font-medium">Daily message limit reached</span>
-                {" — "}you've used all {limit.limit} messages for today. Limit resets at midnight.
+                <span className="font-medium">Daily limit reached</span>
+                {" — "}
+                {limit.resetTime 
+                  ? `Resets at ${new Date(limit.resetTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                  : "Resets at midnight."
+                }
               </>
             ) : (
               <>
                 <span className="font-medium">
-                  {limit.remaining} message{limit.remaining === 1 ? "" : "s"} left today
+                  {limit.remaining} message{limit.remaining === 1 ? "" : "s"} left{limit.remaining <= 3 ? " today" : ""}
                 </span>
-                {" — "}your daily limit of {limit.limit} is almost used.
+                {" — "}Crux daily limit usage.
               </>
             )}
           </div>
         </div>
       )}
-      <div className="rounded-2xl border border-border bg-surface shadow-elegant transition-shadow focus-within:border-border-strong">
+      <div 
+        onDragOver={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          e.currentTarget.classList.add("border-primary/50", "bg-primary/5");
+        }}
+        onDragLeave={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          e.currentTarget.classList.remove("border-primary/50", "bg-primary/5");
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          e.currentTarget.classList.remove("border-primary/50", "bg-primary/5");
+          if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            handleFiles(e.dataTransfer.files);
+          }
+        }}
+        className="rounded-2xl border border-border bg-surface shadow-elegant transition-all focus-within:border-border-strong group/composer"
+      >
+        {visionWarning && (
+          <div className="mx-3 mt-3 flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12px] text-amber-300">
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+            <span>Image input isn't supported by this model. Select a vision-capable model to continue.</span>
+          </div>
+        )}
         {attachments.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 px-3 pt-3">
-            {attachments.map((a, i) => (
-              <div
-                key={i}
-                className="flex items-center gap-1.5 rounded-md bg-secondary px-2 py-1 text-[12px]"
-              >
-                <File className="h-3 w-3" />
-                <span className="truncate max-w-[160px]">{a.name}</span>
-                <button
-                  onClick={() => setAttachments((prev) => prev.filter((_, j) => j !== i))}
-                  className="text-muted-foreground hover:text-foreground"
-                  aria-label="Remove"
+          <div className="flex flex-wrap gap-2 px-3 pt-3">
+            {attachments.map((a) => {
+              const isImage = a.mime?.startsWith("image/");
+              const isUploading = a.status === 'uploading';
+              const isError = a.status === 'error';
+
+              return (
+                <div
+                  key={a.id}
+                  className={cn(
+                    "group relative flex items-center gap-2 rounded-lg border border-border bg-secondary/50 p-1.5 transition-all hover:border-border-strong",
+                    isImage ? "pr-2" : "px-2",
+                    isError && "border-destructive/50 bg-destructive/5"
+                  )}
                 >
-                  <X className="h-3 w-3" />
-                </button>
-              </div>
-            ))}
+                  {isImage ? (
+                    <div className="relative h-10 w-10 overflow-hidden rounded-md border border-border bg-muted">
+                      {a.localUrl && (
+                        <img 
+                          src={a.localUrl} 
+                          alt={a.name}
+                          className={cn(
+                            "h-full w-full object-cover transition-opacity",
+                            isUploading ? "opacity-40" : "opacity-100"
+                          )}
+                        />
+                      )}
+                      {isUploading && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                        </div>
+                      )}
+                      {isError && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-destructive/20">
+                          <AlertTriangle className="h-4 w-4 text-destructive" />
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <File className={cn("h-4 w-4", isUploading ? "text-muted-foreground/40" : "text-muted-foreground")} />
+                      {isUploading && (
+                        <Loader2 className="absolute -inset-1 h-6 w-6 animate-spin text-primary/40" />
+                      )}
+                    </div>
+                  )}
+                  
+                  <div className="flex flex-col gap-0">
+                    <span className="max-w-[120px] truncate text-[11px] font-medium leading-none">
+                      {a.name}
+                    </span>
+                    <span className="text-[9px] text-muted-foreground">
+                      {isError ? "Upload failed" : isUploading ? "Uploading..." : `${(a.size / 1024).toFixed(0)} KB`}
+                    </span>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      if (a.localUrl) URL.revokeObjectURL(a.localUrl);
+                      setAttachments((prev) => prev.filter((item) => item.id !== a.id));
+                    }}
+                    className="ml-1 rounded-full p-0.5 text-muted-foreground hover:bg-background hover:text-foreground"
+                    aria-label="Remove"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              );
+            })}
           </div>
         )}
         <textarea
           ref={ref}
           value={value}
+          onPaste={(e) => {
+            const items = e.clipboardData?.items;
+            if (!items) return;
+            const files: File[] = [];
+            for (let i = 0; i < items.length; i++) {
+              const file = items[i].getAsFile();
+              if (file) files.push(file);
+            }
+            if (files.length > 0) {
+              e.preventDefault();
+              handleFiles(files as unknown as FileList);
+            }
+          }}
           onChange={(e) => {
             setValue(e.target.value);
             autoresize();
@@ -328,121 +533,59 @@ export function ChatInput() {
             rl.active
               ? `Rate limit — try again in ${rl.readableIn}`
               : limit.blocked
-                ? "Daily message limit reached — resets at midnight"
-                : blocked
-                  ? availability.reason === "maintenance"
-                    ? `${agent.name} is under maintenance…`
-                    : `${agent.name} is unavailable…`
-                  : `Message ${agent.name}…`
+                ? `Limit reached — Resets at ${limit.resetTime ? new Date(limit.resetTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'midnight'}`
+                : placeholder
           }
           className="w-full resize-none bg-transparent px-4 pt-3.5 pb-1 text-[14.5px] leading-relaxed placeholder:text-muted-foreground focus:outline-none disabled:opacity-60"
         />
-        <div className="flex items-center gap-1 px-2 pb-2 pt-1">
+        <div className="flex items-center gap-1 px-2 pb-2 pt-1 overflow-x-auto scrollbar-none">
           <AttachmentMenu
             uploading={uploading}
-            onCamera={() => camInputRef.current?.click()}
-            onPhotos={() => imgInputRef.current?.click()}
             onFiles={() => fileInputRef.current?.click()}
-            onDrive={() => setDrivePickerOpen(true)}
-            onGithub={() => setGhPickerOpen(true)}
+            onImages={() => imgInputRef.current?.click()}
+            onCamera={() => camInputRef.current?.click()}
+            onPlugins={() => setPluginsOpen(true)}
             webSearch={webSearch}
             deepResearch={deepResearch}
             setWebSearch={setWebSearch}
             setDeepResearch={setDeepResearch}
-            showWeb={flags.web_search && settings?.web_search_status !== "offline"}
-            showDeep={flags.deep_research && settings?.deep_research_status !== "offline"}
+            showWeb={modeTools.webSearch && flags.web_search && settings?.web_search_status !== "offline"}
+            showDeep={modeTools.deepResearch && flags.deep_research && settings?.deep_research_status !== "offline"}
+            showPlugins={modeTools.plugins}
+            showArch={modeTools.archMode}
             archOn={archOn}
             setArchOn={(v) => setArchMode(v)}
           />
-          <AgentSelector />
-          {agentId === "cipher-1" && flags.operator_mode && <ModeSelector mode={cipherMode} />}
-          <EffortSelector value={effort} />
-          {webSearch && <span className="text-[11px] text-primary hidden md:inline">· web</span>}
-          {deepResearch && <span className="text-[11px] text-primary hidden md:inline">· deep</span>}
-          <div className="ml-auto">
+          
+          <div className="flex items-center gap-1 shrink-0">
+            {modeTools.computer && <ComputerSelector value={computer} />}
+            {modeTools.computer && flags.operator_mode && <ModeSelector mode={cipherMode} />}
+            <EffortSelector value={effort} />
+            <ReasoningSelector />
+          </div>
+
+
+          {((webSearch && modeTools.webSearch) || (deepResearch && modeTools.deepResearch)) && (
+            <div className="flex items-center gap-1 text-[11px] text-primary whitespace-nowrap ml-1">
+              {webSearch && modeTools.webSearch && <span>· web</span>}
+              {deepResearch && modeTools.deepResearch && <span>· deep</span>}
+            </div>
+          )}
+          
+          <div className="ml-auto sticky right-0 bg-surface pl-2 flex items-center gap-1">
+            <ModelSelector />
             <Button
               size="icon"
-              className="h-8 w-8 rounded-lg"
-              disabled={(!value.trim() && attachments.length === 0) || uploading || blocked}
+              className="h-9 w-9 md:h-8 md:w-8 rounded-lg"
+              disabled={!canSend}
               onClick={send}
             >
-              <ArrowUp className="h-4 w-4" />
+              <ArrowUp className="h-5 w-5 md:h-4 md:w-4" />
             </Button>
           </div>
         </div>
       </div>
-      {(blocked || (isAdmin && diagnostic.reason && diagnostic.reason !== "config-missing")) && !limit.blocked && !rl.active && (() => {
-        const alternatives = AGENTS.filter(
-          (a) => a.id !== agentId && isAgentAvailable(agentConfigs, a.id).ok,
-        );
-        const reason = diagnostic.reason ?? availability.reason;
-        const title =
-          reason === "maintenance"
-            ? `${agent.name} is under maintenance`
-            : reason === "disabled"
-            ? `${agent.name} is disabled by the administrator`
-            : reason === "fetch-error"
-            ? `Couldn't load ${agent.name}'s status`
-            : `${agent.name} configuration missing`;
-        const explain =
-          reason === "maintenance"
-            ? "The admin flagged this agent for maintenance so requests are paused."
-            : reason === "disabled"
-            ? "The admin has switched this agent off. It won't accept new requests."
-            : reason === "fetch-error"
-            ? "The agents_config table couldn't be read. The agent is running with defaults."
-            : "No agents_config row exists for this agent. Defaulting to available.";
-        const fieldLine = diagnostic.field
-          ? `${diagnostic.field} = ${String(diagnostic.value)}`
-          : reason === "fetch-error"
-          ? "fetch error"
-          : "no row";
-        return (
-          <div className="mt-2 rounded-xl border border-border bg-surface/80 px-3.5 py-3 text-[12px]">
-            <div className="flex items-start gap-2.5">
-              <AlertTriangle className={cn(
-                "h-4 w-4 mt-0.5 shrink-0",
-                reason === "maintenance" ? "text-amber-400" :
-                reason === "fetch-error" ? "text-muted-foreground" : "text-red-400",
-              )} />
-              <div className="flex-1 space-y-1.5">
-                <div className="font-medium text-foreground">{title}</div>
-                <div className="text-muted-foreground leading-relaxed">{explain}</div>
-                <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Reason</span>
-                  <code className="rounded bg-muted/50 px-1.5 py-0.5 text-[10.5px] font-mono">{reason}</code>
-                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground ml-2">Field</span>
-                  <code className="rounded bg-muted/50 px-1.5 py-0.5 text-[10.5px] font-mono">{fieldLine}</code>
-                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground ml-2">Agent</span>
-                  <code className="rounded bg-muted/50 px-1.5 py-0.5 text-[10.5px] font-mono">{agentId}</code>
-                </div>
-                {diagnostic.detail && (
-                  <div className="text-[11px] text-muted-foreground pt-1">
-                    <span className="uppercase tracking-wider text-[10px]">Detail:</span>{" "}
-                    <span className="font-mono">{diagnostic.detail}</span>
-                  </div>
-                )}
-                {blocked && alternatives.length > 0 && (
-                  <div className="pt-1.5 text-[11.5px]">
-                    <span className="text-muted-foreground">Try instead: </span>
-                    {alternatives.map((a, i) => (
-                      <span key={a.id}>
-                        <button
-                          onClick={() => store.setAgent(a.id)}
-                          className="underline underline-offset-2 hover:text-foreground"
-                        >
-                          {a.name}
-                        </button>
-                        {i < alternatives.length - 1 ? ", " : ""}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        );
-      })()}
+      {/* Legacy agent configuration errors removed */}
 
       <p className="mt-2 text-center text-[11px] text-muted-foreground">
         Metrixcom can make mistakes. Verify important information.
@@ -450,27 +593,82 @@ export function ChatInput() {
       <div className="mt-2">
         <PrivacyDisclaimer />
       </div>
-      <DrivePicker
-        open={drivePickerOpen}
-        onOpenChange={setDrivePickerOpen}
-        onPicked={(a) =>
-          setAttachments((prev) => [
-            ...prev,
-            { name: a.name, size: a.size, path: a.path, mime: a.mime },
-          ])
-        }
-      />
-      <GithubPicker
-        open={ghPickerOpen}
-        onOpenChange={setGhPickerOpen}
-        onPicked={(a) =>
-          setAttachments((prev) => [
-            ...prev,
-            { name: a.name, size: a.size, path: a.path, mime: a.mime },
-          ])
-        }
+      <PluginDirectory
+        open={pluginsOpen}
+        onOpenChange={setPluginsOpen}
       />
     </div>
+  );
+}
+
+/**
+ * Reasoning control. Only offers the levels the SELECTED model actually
+ * supports; renders an explicit unsupported state otherwise, and clamps the
+ * stored level whenever the user switches to a less capable model.
+ */
+function ReasoningSelector() {
+  const [prefs, setPrefs] = useState(() => loadIntelligence());
+  useEffect(() => {
+    const h = (e: Event) => setPrefs((e as CustomEvent).detail);
+    window.addEventListener("arch:intelligence", h);
+    return () => window.removeEventListener("arch:intelligence", h);
+  }, []);
+
+  const entry = getModelEntry(prefs.preferred_model);
+  const levels = reasoningLevelsFor(entry?.reasoning);
+  const level: ReasoningLevel = adaptReasoningLevel(entry?.reasoning, prefs.reasoning_level ?? "off");
+
+  // Keep the stored level honest when the active model can't do it.
+  useEffect(() => {
+    if ((prefs.reasoning_level ?? "off") !== level) saveIntelligence({ reasoning_level: level });
+  }, [level, prefs.reasoning_level]);
+
+  if (levels.length === 0) {
+    return (
+      <PillButton
+        disabled
+        title={
+          entry
+            ? `${entry.name} does not support reasoning controls`
+            : "Select a specific model to use reasoning"
+        }
+        className="opacity-50 cursor-not-allowed"
+      >
+        <Brain className="h-3.5 w-3.5" />
+        <span className="text-muted-foreground">No reasoning</span>
+      </PillButton>
+    );
+  }
+
+  const on = level !== "off";
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <PillButton active={on}>
+          <Brain className={cn("h-3.5 w-3.5", on && "text-primary")} />
+          <span className="text-muted-foreground">Reasoning</span>
+          <span className={cn(on && "text-primary")}>{REASONING_META[level].label}</span>
+        </PillButton>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-64 duration-150 ease-out">
+        <DropdownMenuLabel className="text-[11px] text-muted-foreground">
+          {entry?.name} · supported levels
+        </DropdownMenuLabel>
+        {levels.map((l) => (
+          <DropdownMenuItem
+            key={l}
+            onSelect={() => saveIntelligence({ reasoning_level: l })}
+            className="flex-col items-start gap-0.5 py-2.5"
+          >
+            <div className="flex w-full items-center gap-2">
+              <span className="text-[13.5px] font-medium">{REASONING_META[l].label}</span>
+              {l === level && <span className="ml-auto text-[10px] text-muted-foreground">Active</span>}
+            </div>
+            <div className="text-[12px] text-muted-foreground">{REASONING_META[l].hint}</div>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -497,32 +695,34 @@ function PillButton({
 
 function AttachmentMenu({
   uploading,
-  onCamera,
-  onPhotos,
   onFiles,
-  onDrive,
-  onGithub,
+  onImages,
+  onCamera,
+  onPlugins,
   webSearch,
   deepResearch,
   setWebSearch,
   setDeepResearch,
   showWeb,
   showDeep,
+  showPlugins,
+  showArch,
   archOn,
   setArchOn,
 }: {
   uploading: boolean;
-  onCamera: () => void;
-  onPhotos: () => void;
   onFiles: () => void;
-  onDrive: () => void;
-  onGithub: () => void;
+  onImages: () => void;
+  onCamera: () => void;
+  onPlugins: () => void;
   webSearch: boolean;
   deepResearch: boolean;
   setWebSearch: (v: boolean) => void;
   setDeepResearch: (v: boolean) => void;
   showWeb: boolean;
   showDeep: boolean;
+  showPlugins: boolean;
+  showArch: boolean;
   archOn: boolean;
   setArchOn: (v: boolean) => void;
 }) {
@@ -533,35 +733,44 @@ function AttachmentMenu({
           <Paperclip className="h-4 w-4" />
         </PillButton>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-56">
+      <DropdownMenuContent align="start" className="w-56 duration-150 ease-out">
+        <DropdownMenuItem onSelect={onImages}>
+          <ImageIcon className="h-4 w-4" /> Images
+        </DropdownMenuItem>
         <DropdownMenuItem onSelect={onCamera}>
           <Camera className="h-4 w-4" /> Camera
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={onPhotos}>
-          <ImageIcon className="h-4 w-4" /> Photos
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={onFiles}>
           <File className="h-4 w-4" /> Files
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={onDrive}>
-          <HardDrive className="h-4 w-4" /> Google Drive
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={onGithub}>
-          <Github className="h-4 w-4" /> GitHub
-        </DropdownMenuItem>
+        {showPlugins && (
+          <DropdownMenuItem onSelect={onPlugins}>
+            <Puzzle className="h-4 w-4" /> Plugins
+          </DropdownMenuItem>
+        )}
         <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={() => window.open("/integrations", "_blank")} className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Globe className="h-4 w-4" /> Integrations
+          </div>
+          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+        </DropdownMenuItem>
+        {(showArch || showWeb || showDeep) && <DropdownMenuSeparator />}
+        {(showArch || showWeb || showDeep) && (
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
-            <Globe className="h-4 w-4" /> Integrations
+            <Sparkles className="h-4 w-4" /> Capabilities
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent>
-            <DropdownMenuCheckboxItem
-              checked={archOn}
-              onCheckedChange={(v) => setArchOn(!!v)}
-            >
-              <Sparkles className="h-4 w-4 mr-2" /> Metrixcom Mode
-            </DropdownMenuCheckboxItem>
-            {(showWeb || showDeep) && <DropdownMenuSeparator />}
+            {showArch && (
+              <DropdownMenuCheckboxItem
+                checked={archOn}
+                onCheckedChange={(v) => setArchOn(!!v)}
+              >
+                <Sparkles className="h-4 w-4 mr-2" /> Metrixcom Mode
+              </DropdownMenuCheckboxItem>
+            )}
+            {showArch && (showWeb || showDeep) && <DropdownMenuSeparator />}
             {showWeb && (
               <DropdownMenuCheckboxItem
                 checked={webSearch}
@@ -586,72 +795,63 @@ function AttachmentMenu({
             )}
           </DropdownMenuSubContent>
         </DropdownMenuSub>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
 }
 
-function AgentSelector() {
-  const agentId = useApp((s) => s.agent);
-  const agent = getAgent(agentId);
-  const { isAdmin } = useAuth();
-  const configs = useAgentsConfig();
+function ComputerSelector({ value }: { value: import("@/lib/app-store").ComputerType }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <PillButton>
-          <span className="text-[13px]">{agent.glyph}</span>
-          {agent.name}
+        <PillButton active={value === "local"}>
+          {value === "local" ? (
+            <Monitor className="h-3.5 w-3.5" />
+          ) : (
+            <Globe className="h-3.5 w-3.5" />
+          )}
         </PillButton>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-72">
+      <DropdownMenuContent align="start" className="w-72 duration-150 ease-out">
         <DropdownMenuLabel className="text-[11px] uppercase tracking-wider text-muted-foreground">
-          Choose agent
+          Execution Environment
         </DropdownMenuLabel>
-        {AGENTS.map((a) => {
-          const av = isAgentAvailable(configs, a.id);
-          // Hide fully disabled agents from non-admins entirely
-          if (!isAdmin && av.reason === "disabled") return null;
-          const locked = !isAdmin && !av.ok;
-          return (
-            <DropdownMenuItem
-              key={a.id}
-              onSelect={(e) => {
-                if (locked) {
-                  e.preventDefault();
-                  toast.error(
-                    av.reason === "maintenance"
-                      ? `${a.name} is under maintenance.`
-                      : `${a.name} is currently disabled.`,
-                  );
-                  return;
-                }
-                store.setAgent(a.id);
-              }}
-              className="flex-col items-start gap-0.5 py-2.5"
-            >
-              <div className="flex items-center gap-2 text-[13.5px] font-medium w-full">
-                <span>{a.glyph}</span>
-                {a.name}
-                {!av.ok && (
-                  <span className={cn(
-                    "ml-1 text-[9.5px] uppercase tracking-wider px-1.5 py-0.5 rounded",
-                    av.reason === "maintenance"
-                      ? "bg-amber-500/10 text-amber-400"
-                      : "bg-muted text-muted-foreground",
-                  )}>
-                    {av.reason === "maintenance" ? "Maintenance" : "Disabled"}
-                  </span>
-                )}
-                {a.id === agentId && (
-                  <span className="ml-auto text-[10px] text-muted-foreground">Active</span>
-                )}
-              </div>
-              <div className="text-[12px] text-muted-foreground">{a.description}</div>
-            </DropdownMenuItem>
-          );
-        })}
-
+        <DropdownMenuItem
+          onSelect={() => store.setComputer("local")}
+          className="flex-col items-start gap-0.5 py-2.5"
+        >
+          <div className="flex items-center gap-2 text-[13.5px] font-medium w-full">
+            <Monitor className="h-4 w-4" />
+            Local Computer
+            {value === "local" && (
+              <span className="ml-auto text-[10px] text-muted-foreground">Active</span>
+            )}
+          </div>
+          <div className="text-[12px] text-muted-foreground">
+            Metrixcom works with your authorized local files and tools.
+          </div>
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onSelect={() => {
+            store.setComputer("cloud");
+          }}
+          className={cn(
+            "flex-col items-start gap-0.5 py-2.5",
+            value === "cloud" && "bg-accent/10"
+          )}
+        >
+          <div className="flex items-center gap-2 text-[13.5px] font-medium w-full">
+            <Globe className="h-4 w-4" />
+            Cloud Computer
+            {value === "cloud" && (
+              <span className="ml-auto text-[10px] text-accent">Active</span>
+            )}
+          </div>
+          <div className="text-[12px] text-muted-foreground">
+            Remote, isolated workspace for sandboxed execution and cloud tasks.
+          </div>
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -665,7 +865,7 @@ function ModeSelector({ mode }: { mode: "advisor" | "operator" }) {
           {mode === "advisor" ? "Advisor" : "Operator"}
         </PillButton>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-72">
+      <DropdownMenuContent align="start" className="w-72 duration-150 ease-out">
         <DropdownMenuLabel className="text-[11px] uppercase tracking-wider text-muted-foreground">
           Cipher-1 mode
         </DropdownMenuLabel>
@@ -708,10 +908,9 @@ function EffortSelector({ value }: { value: string }) {
         <PillButton>
           <span className="text-muted-foreground">Effort</span>
           <span className="capitalize">{value}</span>
-          <span className="text-muted-foreground">· {meta.label}</span>
         </PillButton>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-64">
+      <DropdownMenuContent align="start" className="w-64 duration-150 ease-out">
         {EFFORT_LEVELS.map((l) => {
           const m = EFFORT_META[l] ?? { label: l, hint: "" };
           return (

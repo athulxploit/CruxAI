@@ -24,24 +24,68 @@ import heroAsset from "@/assets/docs-hero-gargantua.jpg.asset.json";
 const heroCosmos = heroAsset.url;
 
 export const Route = createFileRoute("/docs")({
-  head: () => ({
-    meta: [
-      { title: "Metrixcom — Documentation" },
-      {
-        name: "description",
-        content:
-          "The official Metrixcom documentation. Guides, references and tutorials for agents, effort tuning, web search, security and integrations.",
+  head: () => {
+    const jsonLd = {
+      "@context": "https://schema.org",
+      "@type": "TechArticle",
+      "headline": "Metrixcom Documentation",
+      "description": "Guides, references and tutorials for agents, effort tuning, web search, security and integrations.",
+      "publisher": {
+        "@type": "Organization",
+        "name": "Metrixcom"
       },
-      { property: "og:title", content: "Metrixcom — Documentation" },
-      {
-        property: "og:description",
-        content:
-          "Master Metrixcom — agents, effort tuning, web search, security and integrations.",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://metrixcom.com/docs"
       },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
-  }),
+      "articleSection": SECTIONS.map(s => s.title).join(", ")
+    };
+
+    const howToLd = {
+      "@context": "https://schema.org",
+      "@type": "HowTo",
+      "name": "Getting Started with Metrixcom",
+      "description": "Master Metrixcom — agents, effort tuning, web search, security and integrations.",
+      "step": SECTIONS.find(s => s.id === 'quickstart')?.blocks.map((b, i) => ({
+        "@type": "HowToStep",
+        "position": i + 1,
+        "name": b.h,
+        "itemListElement": [{
+          "@type": "HowToDirection",
+          "text": b.p
+        }]
+      })) || []
+    };
+
+    return {
+      meta: [
+        { title: "Metrixcom — Documentation" },
+        {
+          name: "description",
+          content:
+            "The official Metrixcom documentation. Guides, references and tutorials for agents, effort tuning, web search, security and integrations.",
+        },
+        { property: "og:title", content: "Metrixcom — Documentation" },
+        {
+          property: "og:description",
+          content:
+            "Master Metrixcom — agents, effort tuning, web search, security and integrations.",
+        },
+        { property: "og:type", content: "website" },
+        { name: "twitter:card", content: "summary_large_image" },
+      ],
+      script: [
+        {
+          type: "application/ld+json",
+          children: JSON.stringify(jsonLd),
+        },
+        {
+          type: "application/ld+json",
+          children: JSON.stringify(howToLd),
+        },
+      ],
+    };
+  },
   component: DocsSite,
 });
 
@@ -66,7 +110,7 @@ const SECTIONS: Section[] = [
     title: "Introduction",
     eyebrow: "Overview",
     intro:
-      "Metrixcom is a premium multi-agent workspace that pairs three specialised models — Pulse-1, Forge-1 and Cipher-1 — with a keyboard-first, privacy-first interface.",
+      "Metrixcom is a premium multi-agent workspace that pairs three specialised models — Metrix-1, Metrix-Forge and Metrix-Cipher — with a keyboard-first, privacy-first interface.",
     blocks: [
       {
         h: "What Metrixcom is",
@@ -117,24 +161,62 @@ const SECTIONS: Section[] = [
     title: "Agents",
     eyebrow: "Three specialists, one workspace",
     intro:
-      "Metrixcom ships with three purpose-built agents. Each has its own system prompt, temperature profile and preferred models.",
+      "Metrixcom ships with three purpose-built agents. Each has its own system prompt and utilizes the GPT-5 architecture for unmatched intelligence.",
     blocks: [
       {
-        h: "Pulse-1 — General & fast",
-        p: "Your everyday brain. Best for chat, writing, summarisation, brainstorming and quick reasoning at low latency.",
+        h: "GPT-5.4 Nano — General & fast",
+        p: "Your everyday brain. Best for chat, writing, brainstorming and quick reasoning. Powered by the next-gen GPT-5.4 architecture.",
       },
       {
-        h: "Forge-1 — Coding & engineering",
-        p: "Tuned for programming, debugging, architecture reviews and long technical answers with runnable code and diagrams.",
+        h: "GPT-5.4 — Coding & engineering",
+        p: "Tuned for programming, debugging, architecture reviews and technical answers with runnable code. Powered by GPT-5.4.",
         code: {
           lang: "ts",
-          body: `// Ask Forge-1 for a working implementation
+          body: `// Ask GPT-5.4 for a working implementation
 "Write a debounced React hook in TypeScript with cleanup."`,
         },
       },
       {
-        h: "Cipher-1 — Security & pentest",
-        p: "Focused on ethical hacking, penetration testing, threat modelling and hardening. Educational and defensive by default.",
+        h: "GPT-5.6 Sol — Security & pentest",
+        p: "Focused on ethical hacking, penetration testing and security research. Powered by the flagship GPT-5.6 Sol.",
+      },
+    ],
+  },
+  {
+    id: "models",
+    icon: Sparkles,
+    title: "Intelligence & Models",
+    eyebrow: "Next-gen LLM support",
+    intro: "Metrixcom supports a wide range of state-of-the-art models, tiered by plan level to ensure the best performance for every user.",
+    blocks: [
+      {
+        h: "GPT-5 Flagship Series",
+        p: "Our primary lineup: GPT-5.4 Nano (Free), GPT-5.4 (Pro), and GPT-5.6 Sol (Pro+).",
+      },
+      {
+        h: "GPT-5 Lineup",
+        p: "Next-gen OpenAI models: GPT-5.4 Nano (Free), GPT-5.4 Mini (Standard), GPT-5.4 (Pro), GPT-5.5 (Pro), GPT-5.6 Sol (Pro+) and GPT-5.5 Pro (Pro+).",
+      },
+      {
+        h: "Claude & Others",
+        p: "Google models: Gemini 3 Flash (Free), Gemini 3.6 Flash (Pro) and Gemini 3.1 Pro (Pro). Plus Llama 3.3 70B (Pro+) on Groq.",
+      },
+    ],
+  },
+  {
+    id: "computer",
+    icon: Wrench,
+    title: "Computer Engine",
+    eyebrow: "Local & Cloud Control",
+    intro: "Control your local machine or provision a secure cloud instance directly from Crux AI.",
+    blocks: [
+      {
+        h: "Local Compute",
+        p: "Pair your local machine using the Crux Desktop Companion to execute terminal commands, manage files, and automate workflows locally.",
+      },
+      {
+        h: "Cloud Compute",
+        p: "Spin up isolated cloud environments for intensive research, complex simulations, or secure development tasks.",
       },
     ],
   },
@@ -148,18 +230,18 @@ const SECTIONS: Section[] = [
     blocks: [
       {
         h: "The five levels",
-        p: "Fast → Balanced → Deep → Expert → Maximum. Choose from the composer or set a default in Settings → Intelligence.",
+        p: "Low → Medium → High → Ultra → Max. Choose from the composer or set a default in Settings → Intelligence.",
         list: [
-          "Fast — sub-second answers, chat-length",
-          "Balanced — the daily driver",
-          "Deep — structured, multi-paragraph answers",
-          "Expert — long-form technical responses",
-          "Maximum — full reasoning trace, research-grade",
+          "Low (Standard) — GPT-5.4 Nano",
+          "Medium — GPT-5.4 Nano with higher limits",
+          "High — GPT-5.4",
+          "Ultra — GPT-5.6 Sol",
+          "Max — GPT-5.6 Sol + deepest reasoning",
         ],
       },
       {
         h: "Thinking mode",
-        p: "Enable Thinking to reveal a live reasoning panel — you'll see how Metrixcom plans its answer, similar to Deepseek and Claude.",
+        p: "Enable Thinking to reveal a live reasoning panel — you'll see how Metrixcom plans its answer, similar to Deepseek and Claude. This process is always expanded by default to ensure maximum transparency.",
       },
     ],
   },
@@ -398,7 +480,17 @@ function DocsSite() {
                   <li key={s.id}>
                     <a
                       href={`#${s.id}`}
-                      onClick={() => setMobileNav(false)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        const el = document.getElementById(s.id);
+                        if (el) {
+                          window.scrollTo({
+                            top: el.offsetTop - 80,
+                            behavior: "smooth",
+                          });
+                        }
+                        setMobileNav(false);
+                      }}
                       className={`flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors ${
                         isActive
                           ? "bg-surface text-foreground"
@@ -459,7 +551,7 @@ function DocsSite() {
                 <span className="text-muted-foreground">One workspace. Unlimited possibilities.</span>
               </h1>
               <p className="mt-4 max-w-2xl text-[14px] sm:text-[15px] text-muted-foreground leading-relaxed">
-                Everything you need to build with Pulse-1, Forge-1 and Cipher-1 — from
+                Everything you need to build with Metrix-1, Metrix-Forge and Metrix-Cipher — from
                 your first prompt to reasoning traces, live web search, file generation
                 and enterprise-grade security.
               </p>

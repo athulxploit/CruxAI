@@ -18,49 +18,43 @@
 // providers requires no routing-logic change — just insert a row.
 import { supabase } from "@/integrations/supabase/client";
 
-export type ProviderId = "lovable" | "groq" | "gemini" | "openrouter";
+export type ProviderId = "groq" | "gemini" | "openrouter";
 export interface ProviderCall { provider: ProviderId; model: string; }
 export type Effort = "low" | "medium" | "high" | "ultra" | "max";
 
-// Lovable AI Gateway — always funded, always available. Prepended to every
-// chain so failover has a reliable primary even when third-party keys are
-// rate-limited, exhausted, or rejected.
-const LOVABLE_PRIMARY: ProviderCall = { provider: "lovable", model: "google/gemini-3-flash-preview" };
-const LOVABLE_PRO: ProviderCall = { provider: "lovable", model: "google/gemini-2.5-pro" };
+// Direct provider keys — read from pool in router.
+const DIRECT_GPT_4O_MINI: ProviderCall = { provider: "openrouter", model: "openai/gpt-4o-mini" };
+const DIRECT_GPT_4O: ProviderCall = { provider: "openrouter", model: "openai/gpt-4o" };
+const DIRECT_O3_MINI: ProviderCall = { provider: "openrouter", model: "openai/o3-mini" };
+const DIRECT_GEMINI_FLASH: ProviderCall = { provider: "openrouter", model: "google/gemini-2.0-flash-001" };
+const DIRECT_GEMINI_PRO: ProviderCall = { provider: "openrouter", model: "google/gemini-pro-1.5" };
 
 // Global fallback (used by any agent without an override).
 export const DEFAULT_CHAINS: Record<Effort, ProviderCall[]> = {
   low: [
-    LOVABLE_PRIMARY,
-    { provider: "groq",       model: "llama-3.1-8b-instant" },
-    { provider: "gemini",     model: "gemini-2.0-flash" },
-    { provider: "openrouter", model: "qwen/qwen3-32b" },
+    DIRECT_GEMINI_FLASH,
+    DIRECT_GPT_4O_MINI,
+    { provider: "groq",       model: "llama-3.3-70b-versatile" },
   ],
   medium: [
-    LOVABLE_PRIMARY,
-    { provider: "groq",       model: "llama-3.3-70b-versatile" },
-    { provider: "gemini",     model: "gemini-2.0-flash" },
-    { provider: "openrouter", model: "qwen/qwen3-32b" },
+    DIRECT_GEMINI_FLASH,
+    DIRECT_GPT_4O_MINI,
+    DIRECT_GPT_4O,
   ],
   high: [
-    LOVABLE_PRIMARY,
-    { provider: "gemini",     model: "gemini-2.0-flash" },
-    { provider: "groq",       model: "openai/gpt-oss-120b" },
-    { provider: "openrouter", model: "qwen/qwen3-32b" },
+    DIRECT_GPT_4O,
+    { provider: "openrouter", model: "anthropic/claude-3.5-sonnet" },
+    DIRECT_GEMINI_PRO,
   ],
   ultra: [
-    LOVABLE_PRO,
-    LOVABLE_PRIMARY,
-    { provider: "gemini",     model: "gemini-2.0-flash" },
-    { provider: "groq",       model: "openai/gpt-oss-120b" },
-    { provider: "openrouter", model: "qwen/qwen3-32b" },
+    DIRECT_O3_MINI,
+    { provider: "openrouter", model: "openai/o3-mini" },
+    DIRECT_GPT_4O,
   ],
   max: [
-    LOVABLE_PRO,
-    LOVABLE_PRIMARY,
-    { provider: "gemini",     model: "gemini-2.0-flash" },
-    { provider: "openrouter", model: "qwen/qwen3-32b" },
-    { provider: "groq",       model: "openai/gpt-oss-120b" },
+    DIRECT_O3_MINI,
+    { provider: "openrouter", model: "openai/o3-mini" },
+    { provider: "openrouter", model: "anthropic/claude-3.5-sonnet" },
   ],
 };
 
@@ -69,62 +63,56 @@ export const DEFAULT_CHAINS: Record<Effort, ProviderCall[]> = {
 export const AGENT_DEFAULT_CHAINS: Record<string, Partial<Record<Effort, ProviderCall[]>>> = {
   "forge-1": {
     low: [
-      { provider: "gemini",     model: "gemini-2.0-flash" },
-      { provider: "groq",       model: "llama-3.3-70b-versatile" },
-      { provider: "openrouter", model: "qwen/qwen3-32b" },
+      DIRECT_GEMINI_FLASH,
+      { provider: "openrouter", model: "openai/gpt-4o-mini" },
     ],
     medium: [
-      { provider: "gemini",     model: "gemini-2.0-flash" },
-      { provider: "groq",       model: "openai/gpt-oss-120b" },
-      { provider: "openrouter", model: "qwen/qwen3-32b" },
+      DIRECT_GEMINI_FLASH,
+      { provider: "openrouter", model: "openai/gpt-4o" },
     ],
     high: [
-      { provider: "groq",       model: "openai/gpt-oss-120b" },
-      { provider: "gemini",     model: "gemini-2.0-flash" },
-      { provider: "openrouter", model: "qwen/qwen3-32b" },
+      { provider: "openrouter", model: "openai/gpt-4o" },
+      DIRECT_GEMINI_PRO,
     ],
     ultra: [
-      { provider: "gemini",     model: "gemini-2.0-flash" },
-      { provider: "groq",       model: "openai/gpt-oss-120b" },
-      { provider: "openrouter", model: "qwen/qwen3-32b" },
+      { provider: "openrouter", model: "openai/o3-mini" },
+      { provider: "openrouter", model: "openai/gpt-4o" },
     ],
     max: [
-      { provider: "gemini",     model: "gemini-2.0-flash" },
-      { provider: "openrouter", model: "qwen/qwen3-32b" },
-      { provider: "groq",       model: "openai/gpt-oss-120b" },
+      { provider: "openrouter", model: "openai/o3-mini" },
+      { provider: "openrouter", model: "openai/gpt-4o" },
     ],
   },
   "cipher-1": {
     low: [
-      { provider: "groq",       model: "llama-3.3-70b-versatile" },
-      { provider: "gemini",     model: "gemini-2.0-flash" },
-      { provider: "openrouter", model: "qwen/qwen3-32b" },
+      { provider: "openrouter", model: "openai/gpt-4o-mini" },
+      DIRECT_GEMINI_FLASH,
     ],
     medium: [
-      { provider: "groq",       model: "openai/gpt-oss-120b" },
-      { provider: "gemini",     model: "gemini-2.0-flash" },
-      { provider: "openrouter", model: "qwen/qwen3-32b" },
+      { provider: "openrouter", model: "openai/gpt-4o" },
+      DIRECT_GEMINI_PRO,
     ],
     high: [
-      { provider: "gemini",     model: "gemini-2.0-flash" },
-      { provider: "groq",       model: "openai/gpt-oss-120b" },
-      { provider: "openrouter", model: "qwen/qwen3-32b" },
+      DIRECT_GEMINI_FLASH,
+      { provider: "openrouter", model: "openai/o3-mini" },
     ],
     ultra: [
-      { provider: "gemini",     model: "gemini-2.0-flash" },
-      { provider: "groq",       model: "openai/gpt-oss-120b" },
-      { provider: "openrouter", model: "qwen/qwen3-32b" },
+      { provider: "openrouter", model: "openai/o3-mini" },
+      { provider: "openrouter", model: "openai/gpt-4o" },
     ],
     max: [
-      { provider: "gemini",     model: "gemini-2.0-flash" },
-      { provider: "openrouter", model: "qwen/qwen3-32b" },
-      { provider: "groq",       model: "openai/gpt-oss-120b" },
+      { provider: "openrouter", model: "openai/o3-mini" },
+      { provider: "openrouter", model: "openai/gpt-4o" },
     ],
   },
 };
 
 const EFFORTS: Effort[] = ["low", "medium", "high", "ultra", "max"];
-const VALID_PROVIDERS: ProviderId[] = ["lovable", "groq", "gemini", "openrouter"];
+const VALID_PROVIDERS: ProviderId[] = ["groq", "gemini", "openrouter"];
+
+import { loadIntelligence } from "./intelligence";
+import { chainForPreferredModel } from "./model-registry";
+
 
 type ChainMap = Record<string, ProviderCall[]>; // key: `chain:<effort>` or `chain:<agent>:<effort>`
 
@@ -181,18 +169,37 @@ function subscribeInvalidation() {
 
 function resolve(map: ChainMap, agent: string | undefined, effort: Effort): ProviderCall[] {
   const a = (agent || "").toLowerCase();
+  
+  // User override via Settings > Intelligence > Preferred Model.
+  const prefs = loadIntelligence();
+  const override = chainForPreferredModel(prefs.preferred_model);
+  
   let chain: ProviderCall[];
-  if (a && map[`chain:${a}:${effort}`]) chain = map[`chain:${a}:${effort}`];
-  else if (map[`chain:${effort}`]) chain = map[`chain:${effort}`];
-  else {
+  if (override) {
+    chain = override;
+  } else if (a && map[`chain:${a}:${effort}`]) {
+    chain = map[`chain:${a}:${effort}`];
+  } else if (map[`chain:${effort}`]) {
+    chain = map[`chain:${effort}`];
+  } else {
     const agentBaked = a ? AGENT_DEFAULT_CHAINS[a]?.[effort] : undefined;
     chain = agentBaked ?? DEFAULT_CHAINS[effort];
   }
-  // Guarantee Lovable AI Gateway is the primary. Reliable + funded, so no
-  // per-user quota failures from third-party keys ever cause a hard error.
-  if (chain[0]?.provider !== "lovable") {
-    chain = [LOVABLE_PRIMARY, ...chain];
+
+  // Ensure high effort levels always use capable models if not already specified.
+  if ((effort === "ultra" || effort === "max") && chain.length > 0) {
+    // Inject a reasoning/capable model at the front if the current one is low-tier
+    const first = chain[0];
+    if (first.model.includes("mini") || first.model.includes("nano")) {
+      chain = [DIRECT_O3_MINI, ...chain];
+    }
   }
+
+  // No Lovable Gateway fallback. Direct providers only.
+  if (chain[0]?.provider !== "openrouter" && chain[0]?.provider !== "groq" && chain[0]?.provider !== "gemini") {
+    chain = [DIRECT_GPT_4O_MINI, ...chain];
+  }
+
   return chain;
 }
 

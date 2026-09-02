@@ -11,30 +11,63 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
-import { Route as AgentTestRouteImport } from './routes/agent-test'
 import { Route as AgentsRouteImport } from './routes/agents'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as ChangelogRouteImport } from './routes/changelog'
+import { Route as ComputerRouteImport } from './routes/computer'
 import { Route as DiagnosticsRouteImport } from './routes/diagnostics'
 import { Route as DocsRouteImport } from './routes/docs'
 import { Route as DownloadRouteImport } from './routes/download'
 import { Route as FilesRouteImport } from './routes/files'
 import { Route as HelpRouteImport } from './routes/help'
 import { Route as HistoryRouteImport } from './routes/history'
+import { Route as IntegrationsRouteImport } from './routes/integrations'
+import { Route as ModelTestRouteImport } from './routes/model-test'
 import { Route as PremiumRouteImport } from './routes/premium'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as WorkflowsRouteImport } from './routes/workflows'
+import { Route as WorkspacesRouteImport } from './routes/workspaces'
 import { Route as ApiAiPoolStatusRouteImport } from './routes/api/ai-pool-status'
 import { Route as ApiAiStreamRouteImport } from './routes/api/ai-stream'
 import { Route as ApiGenerateImageRouteImport } from './routes/api/generate-image'
+import { Route as BlogIndexRouteImport } from './routes/blog/index'
+import { Route as WorkflowsIdRouteImport } from './routes/workflows.$id'
 import { Route as WorkspacesIndexRouteImport } from './routes/workspaces.index'
 import { Route as WorkspacesToolRouteImport } from './routes/workspaces.$tool'
+import { Route as ApiPublicCloudComputeRouteImport } from './routes/api/public/cloud-compute'
+import { Route as ApiPublicDiagnoseClaude5sonnetRouteImport } from './routes/api/public/diagnose-claude5sonnet'
+import { Route as ApiPublicDiagnoseClaudeopus46RouteImport } from './routes/api/public/diagnose-claudeopus46'
+import { Route as ApiPublicDiagnoseClaudesonnet46RouteImport } from './routes/api/public/diagnose-claudesonnet46'
+import { Route as ApiPublicDiagnoseDeepseekV4RouteImport } from './routes/api/public/diagnose-deepseek-v4'
+import { Route as ApiPublicDiagnoseDeepseekv4flashRouteImport } from './routes/api/public/diagnose-deepseekv4flash'
+import { Route as ApiPublicDiagnoseGlm52RouteImport } from './routes/api/public/diagnose-glm52'
+import { Route as ApiPublicDiagnoseGpt53codexRouteImport } from './routes/api/public/diagnose-gpt53codex'
+import { Route as ApiPublicDiagnoseGpt54miniRouteImport } from './routes/api/public/diagnose-gpt54mini'
+import { Route as ApiPublicDiagnoseGpt54nanoRouteImport } from './routes/api/public/diagnose-gpt54nano'
+import { Route as ApiPublicDiagnoseGpt54nanoE2eRouteImport } from './routes/api/public/diagnose-gpt54nano-e2e'
+import { Route as ApiPublicDiagnoseGpt55RouteImport } from './routes/api/public/diagnose-gpt55'
+import { Route as ApiPublicDiagnoseGpt56solRouteImport } from './routes/api/public/diagnose-gpt56sol'
+import { Route as ApiPublicDiagnoseNemotronRouteImport } from './routes/api/public/diagnose-nemotron'
+import { Route as ApiPublicDiagnoseNemotronNanoFreeRouteImport } from './routes/api/public/diagnose-nemotron-nano-free'
+import { Route as ApiPublicDiagnoseNemotronSuperRouteImport } from './routes/api/public/diagnose-nemotron-super'
+import { Route as ApiPublicDiagnoseNemotronUltraRouteImport } from './routes/api/public/diagnose-nemotron-ultra'
 import { Route as ApiPublicGithubCallbackRouteImport } from './routes/api/public/github-callback'
+import { Route as ApiPublicListModelsRouteImport } from './routes/api/public/list-models'
+import { Route as ApiPublicRazorpayWebhookRouteImport } from './routes/api/public/razorpay-webhook'
+import { Route as ApiPublicTestModelsRouteImport } from './routes/api/public/test-models'
+import { Route as ApiPublicVerifyModelsRouteImport } from './routes/api/public/verify-models'
+import { Route as WorkspacesToolActivityRouteImport } from './routes/workspaces.$tool.activity'
+import { Route as WorkspacesToolBlueprintRouteImport } from './routes/workspaces.$tool.blueprint'
+import { Route as WorkspacesToolFilesRouteImport } from './routes/workspaces.$tool.files'
+import { Route as WorkspacesToolTasksRouteImport } from './routes/workspaces.$tool.tasks'
 import { Route as ApiPublicHoneypotsAdminRouteImport } from './routes/api/public/honeypots/admin'
 import { Route as ApiPublicHoneypotsEnvRouteImport } from './routes/api/public/honeypots/env'
 import { Route as ApiPublicHoneypotsGitConfigRouteImport } from './routes/api/public/honeypots/git-config'
 import { Route as ApiPublicHoneypotsPhpmyadminRouteImport } from './routes/api/public/honeypots/phpmyadmin'
 import { Route as ApiPublicHoneypotsWpLoginRouteImport } from './routes/api/public/honeypots/wp-login'
+import { Route as ApiPublicWorkflowIdRouteImport } from './routes/api/public/workflow.$id'
 import { Route as ApiPublicHoneypotsTokenTokenRouteImport } from './routes/api/public/honeypots/token.$token'
 
 const IndexRoute = IndexRouteImport.update({
@@ -47,11 +80,6 @@ const AdminRoute = AdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AgentTestRoute = AgentTestRouteImport.update({
-  id: '/agent-test',
-  path: '/agent-test',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AgentsRoute = AgentsRouteImport.update({
   id: '/agents',
   path: '/agents',
@@ -60,6 +88,16 @@ const AgentsRoute = AgentsRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChangelogRoute = ChangelogRouteImport.update({
+  id: '/changelog',
+  path: '/changelog',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ComputerRoute = ComputerRouteImport.update({
+  id: '/computer',
+  path: '/computer',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DiagnosticsRoute = DiagnosticsRouteImport.update({
@@ -92,6 +130,16 @@ const HistoryRoute = HistoryRouteImport.update({
   path: '/history',
   getParentRoute: () => rootRouteImport,
 } as any)
+const IntegrationsRoute = IntegrationsRouteImport.update({
+  id: '/integrations',
+  path: '/integrations',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ModelTestRoute = ModelTestRouteImport.update({
+  id: '/model-test',
+  path: '/model-test',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PremiumRoute = PremiumRouteImport.update({
   id: '/premium',
   path: '/premium',
@@ -112,6 +160,16 @@ const TermsRoute = TermsRouteImport.update({
   path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WorkflowsRoute = WorkflowsRouteImport.update({
+  id: '/workflows',
+  path: '/workflows',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WorkspacesRoute = WorkspacesRouteImport.update({
+  id: '/workspaces',
+  path: '/workspaces',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAiPoolStatusRoute = ApiAiPoolStatusRouteImport.update({
   id: '/api/ai-pool-status',
   path: '/api/ai-pool-status',
@@ -127,20 +185,170 @@ const ApiGenerateImageRoute = ApiGenerateImageRouteImport.update({
   path: '/api/generate-image',
   getParentRoute: () => rootRouteImport,
 } as any)
-const WorkspacesIndexRoute = WorkspacesIndexRouteImport.update({
-  id: '/workspaces/',
-  path: '/workspaces/',
+const BlogIndexRoute = BlogIndexRouteImport.update({
+  id: '/blog/',
+  path: '/blog/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const WorkflowsIdRoute = WorkflowsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => WorkflowsRoute,
+} as any)
+const WorkspacesIndexRoute = WorkspacesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => WorkspacesRoute,
 } as any)
 const WorkspacesToolRoute = WorkspacesToolRouteImport.update({
-  id: '/workspaces/$tool',
-  path: '/workspaces/$tool',
+  id: '/$tool',
+  path: '/$tool',
+  getParentRoute: () => WorkspacesRoute,
+} as any)
+const ApiPublicCloudComputeRoute = ApiPublicCloudComputeRouteImport.update({
+  id: '/api/public/cloud-compute',
+  path: '/api/public/cloud-compute',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicDiagnoseClaude5sonnetRoute =
+  ApiPublicDiagnoseClaude5sonnetRouteImport.update({
+    id: '/api/public/diagnose-claude5sonnet',
+    path: '/api/public/diagnose-claude5sonnet',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicDiagnoseClaudeopus46Route =
+  ApiPublicDiagnoseClaudeopus46RouteImport.update({
+    id: '/api/public/diagnose-claudeopus46',
+    path: '/api/public/diagnose-claudeopus46',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicDiagnoseClaudesonnet46Route =
+  ApiPublicDiagnoseClaudesonnet46RouteImport.update({
+    id: '/api/public/diagnose-claudesonnet46',
+    path: '/api/public/diagnose-claudesonnet46',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicDiagnoseDeepseekV4Route =
+  ApiPublicDiagnoseDeepseekV4RouteImport.update({
+    id: '/api/public/diagnose-deepseek-v4',
+    path: '/api/public/diagnose-deepseek-v4',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicDiagnoseDeepseekv4flashRoute =
+  ApiPublicDiagnoseDeepseekv4flashRouteImport.update({
+    id: '/api/public/diagnose-deepseekv4flash',
+    path: '/api/public/diagnose-deepseekv4flash',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicDiagnoseGlm52Route = ApiPublicDiagnoseGlm52RouteImport.update({
+  id: '/api/public/diagnose-glm52',
+  path: '/api/public/diagnose-glm52',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicDiagnoseGpt53codexRoute =
+  ApiPublicDiagnoseGpt53codexRouteImport.update({
+    id: '/api/public/diagnose-gpt53codex',
+    path: '/api/public/diagnose-gpt53codex',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicDiagnoseGpt54miniRoute =
+  ApiPublicDiagnoseGpt54miniRouteImport.update({
+    id: '/api/public/diagnose-gpt54mini',
+    path: '/api/public/diagnose-gpt54mini',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicDiagnoseGpt54nanoRoute =
+  ApiPublicDiagnoseGpt54nanoRouteImport.update({
+    id: '/api/public/diagnose-gpt54nano',
+    path: '/api/public/diagnose-gpt54nano',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicDiagnoseGpt54nanoE2eRoute =
+  ApiPublicDiagnoseGpt54nanoE2eRouteImport.update({
+    id: '/api/public/diagnose-gpt54nano-e2e',
+    path: '/api/public/diagnose-gpt54nano-e2e',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicDiagnoseGpt55Route = ApiPublicDiagnoseGpt55RouteImport.update({
+  id: '/api/public/diagnose-gpt55',
+  path: '/api/public/diagnose-gpt55',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicDiagnoseGpt56solRoute =
+  ApiPublicDiagnoseGpt56solRouteImport.update({
+    id: '/api/public/diagnose-gpt56sol',
+    path: '/api/public/diagnose-gpt56sol',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicDiagnoseNemotronRoute =
+  ApiPublicDiagnoseNemotronRouteImport.update({
+    id: '/api/public/diagnose-nemotron',
+    path: '/api/public/diagnose-nemotron',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicDiagnoseNemotronNanoFreeRoute =
+  ApiPublicDiagnoseNemotronNanoFreeRouteImport.update({
+    id: '/api/public/diagnose-nemotron-nano-free',
+    path: '/api/public/diagnose-nemotron-nano-free',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicDiagnoseNemotronSuperRoute =
+  ApiPublicDiagnoseNemotronSuperRouteImport.update({
+    id: '/api/public/diagnose-nemotron-super',
+    path: '/api/public/diagnose-nemotron-super',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicDiagnoseNemotronUltraRoute =
+  ApiPublicDiagnoseNemotronUltraRouteImport.update({
+    id: '/api/public/diagnose-nemotron-ultra',
+    path: '/api/public/diagnose-nemotron-ultra',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicGithubCallbackRoute = ApiPublicGithubCallbackRouteImport.update({
   id: '/api/public/github-callback',
   path: '/api/public/github-callback',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicListModelsRoute = ApiPublicListModelsRouteImport.update({
+  id: '/api/public/list-models',
+  path: '/api/public/list-models',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicRazorpayWebhookRoute =
+  ApiPublicRazorpayWebhookRouteImport.update({
+    id: '/api/public/razorpay-webhook',
+    path: '/api/public/razorpay-webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicTestModelsRoute = ApiPublicTestModelsRouteImport.update({
+  id: '/api/public/test-models',
+  path: '/api/public/test-models',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicVerifyModelsRoute = ApiPublicVerifyModelsRouteImport.update({
+  id: '/api/public/verify-models',
+  path: '/api/public/verify-models',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WorkspacesToolActivityRoute = WorkspacesToolActivityRouteImport.update({
+  id: '/activity',
+  path: '/activity',
+  getParentRoute: () => WorkspacesToolRoute,
+} as any)
+const WorkspacesToolBlueprintRoute = WorkspacesToolBlueprintRouteImport.update({
+  id: '/blueprint',
+  path: '/blueprint',
+  getParentRoute: () => WorkspacesToolRoute,
+} as any)
+const WorkspacesToolFilesRoute = WorkspacesToolFilesRouteImport.update({
+  id: '/files',
+  path: '/files',
+  getParentRoute: () => WorkspacesToolRoute,
+} as any)
+const WorkspacesToolTasksRoute = WorkspacesToolTasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
+  getParentRoute: () => WorkspacesToolRoute,
 } as any)
 const ApiPublicHoneypotsAdminRoute = ApiPublicHoneypotsAdminRouteImport.update({
   id: '/api/public/honeypots/admin',
@@ -170,6 +378,11 @@ const ApiPublicHoneypotsWpLoginRoute =
     path: '/api/public/honeypots/wp-login',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicWorkflowIdRoute = ApiPublicWorkflowIdRouteImport.update({
+  id: '/api/public/workflow/$id',
+  path: '/api/public/workflow/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicHoneypotsTokenTokenRoute =
   ApiPublicHoneypotsTokenTokenRouteImport.update({
     id: '/api/public/honeypots/token/$token',
@@ -180,89 +393,187 @@ const ApiPublicHoneypotsTokenTokenRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
-  '/agent-test': typeof AgentTestRoute
   '/agents': typeof AgentsRoute
   '/auth': typeof AuthRoute
+  '/changelog': typeof ChangelogRoute
+  '/computer': typeof ComputerRoute
   '/diagnostics': typeof DiagnosticsRoute
   '/docs': typeof DocsRoute
   '/download': typeof DownloadRoute
   '/files': typeof FilesRoute
   '/help': typeof HelpRoute
   '/history': typeof HistoryRoute
+  '/integrations': typeof IntegrationsRoute
+  '/model-test': typeof ModelTestRoute
   '/premium': typeof PremiumRoute
   '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
   '/terms': typeof TermsRoute
+  '/workflows': typeof WorkflowsRouteWithChildren
+  '/workspaces': typeof WorkspacesRouteWithChildren
   '/api/ai-pool-status': typeof ApiAiPoolStatusRoute
   '/api/ai-stream': typeof ApiAiStreamRoute
   '/api/generate-image': typeof ApiGenerateImageRoute
-  '/workspaces/$tool': typeof WorkspacesToolRoute
+  '/workflows/$id': typeof WorkflowsIdRoute
+  '/workspaces/$tool': typeof WorkspacesToolRouteWithChildren
+  '/blog/': typeof BlogIndexRoute
   '/workspaces/': typeof WorkspacesIndexRoute
+  '/api/public/cloud-compute': typeof ApiPublicCloudComputeRoute
+  '/api/public/diagnose-claude5sonnet': typeof ApiPublicDiagnoseClaude5sonnetRoute
+  '/api/public/diagnose-claudeopus46': typeof ApiPublicDiagnoseClaudeopus46Route
+  '/api/public/diagnose-claudesonnet46': typeof ApiPublicDiagnoseClaudesonnet46Route
+  '/api/public/diagnose-deepseek-v4': typeof ApiPublicDiagnoseDeepseekV4Route
+  '/api/public/diagnose-deepseekv4flash': typeof ApiPublicDiagnoseDeepseekv4flashRoute
+  '/api/public/diagnose-glm52': typeof ApiPublicDiagnoseGlm52Route
+  '/api/public/diagnose-gpt53codex': typeof ApiPublicDiagnoseGpt53codexRoute
+  '/api/public/diagnose-gpt54mini': typeof ApiPublicDiagnoseGpt54miniRoute
+  '/api/public/diagnose-gpt54nano': typeof ApiPublicDiagnoseGpt54nanoRoute
+  '/api/public/diagnose-gpt54nano-e2e': typeof ApiPublicDiagnoseGpt54nanoE2eRoute
+  '/api/public/diagnose-gpt55': typeof ApiPublicDiagnoseGpt55Route
+  '/api/public/diagnose-gpt56sol': typeof ApiPublicDiagnoseGpt56solRoute
+  '/api/public/diagnose-nemotron': typeof ApiPublicDiagnoseNemotronRoute
+  '/api/public/diagnose-nemotron-nano-free': typeof ApiPublicDiagnoseNemotronNanoFreeRoute
+  '/api/public/diagnose-nemotron-super': typeof ApiPublicDiagnoseNemotronSuperRoute
+  '/api/public/diagnose-nemotron-ultra': typeof ApiPublicDiagnoseNemotronUltraRoute
   '/api/public/github-callback': typeof ApiPublicGithubCallbackRoute
+  '/api/public/list-models': typeof ApiPublicListModelsRoute
+  '/api/public/razorpay-webhook': typeof ApiPublicRazorpayWebhookRoute
+  '/api/public/test-models': typeof ApiPublicTestModelsRoute
+  '/api/public/verify-models': typeof ApiPublicVerifyModelsRoute
+  '/workspaces/$tool/activity': typeof WorkspacesToolActivityRoute
+  '/workspaces/$tool/blueprint': typeof WorkspacesToolBlueprintRoute
+  '/workspaces/$tool/files': typeof WorkspacesToolFilesRoute
+  '/workspaces/$tool/tasks': typeof WorkspacesToolTasksRoute
   '/api/public/honeypots/admin': typeof ApiPublicHoneypotsAdminRoute
   '/api/public/honeypots/env': typeof ApiPublicHoneypotsEnvRoute
   '/api/public/honeypots/git-config': typeof ApiPublicHoneypotsGitConfigRoute
   '/api/public/honeypots/phpmyadmin': typeof ApiPublicHoneypotsPhpmyadminRoute
   '/api/public/honeypots/wp-login': typeof ApiPublicHoneypotsWpLoginRoute
+  '/api/public/workflow/$id': typeof ApiPublicWorkflowIdRoute
   '/api/public/honeypots/token/$token': typeof ApiPublicHoneypotsTokenTokenRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
-  '/agent-test': typeof AgentTestRoute
   '/agents': typeof AgentsRoute
   '/auth': typeof AuthRoute
+  '/changelog': typeof ChangelogRoute
+  '/computer': typeof ComputerRoute
   '/diagnostics': typeof DiagnosticsRoute
   '/docs': typeof DocsRoute
   '/download': typeof DownloadRoute
   '/files': typeof FilesRoute
   '/help': typeof HelpRoute
   '/history': typeof HistoryRoute
+  '/integrations': typeof IntegrationsRoute
+  '/model-test': typeof ModelTestRoute
   '/premium': typeof PremiumRoute
   '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
   '/terms': typeof TermsRoute
+  '/workflows': typeof WorkflowsRouteWithChildren
   '/api/ai-pool-status': typeof ApiAiPoolStatusRoute
   '/api/ai-stream': typeof ApiAiStreamRoute
   '/api/generate-image': typeof ApiGenerateImageRoute
-  '/workspaces/$tool': typeof WorkspacesToolRoute
+  '/workflows/$id': typeof WorkflowsIdRoute
+  '/workspaces/$tool': typeof WorkspacesToolRouteWithChildren
+  '/blog': typeof BlogIndexRoute
   '/workspaces': typeof WorkspacesIndexRoute
+  '/api/public/cloud-compute': typeof ApiPublicCloudComputeRoute
+  '/api/public/diagnose-claude5sonnet': typeof ApiPublicDiagnoseClaude5sonnetRoute
+  '/api/public/diagnose-claudeopus46': typeof ApiPublicDiagnoseClaudeopus46Route
+  '/api/public/diagnose-claudesonnet46': typeof ApiPublicDiagnoseClaudesonnet46Route
+  '/api/public/diagnose-deepseek-v4': typeof ApiPublicDiagnoseDeepseekV4Route
+  '/api/public/diagnose-deepseekv4flash': typeof ApiPublicDiagnoseDeepseekv4flashRoute
+  '/api/public/diagnose-glm52': typeof ApiPublicDiagnoseGlm52Route
+  '/api/public/diagnose-gpt53codex': typeof ApiPublicDiagnoseGpt53codexRoute
+  '/api/public/diagnose-gpt54mini': typeof ApiPublicDiagnoseGpt54miniRoute
+  '/api/public/diagnose-gpt54nano': typeof ApiPublicDiagnoseGpt54nanoRoute
+  '/api/public/diagnose-gpt54nano-e2e': typeof ApiPublicDiagnoseGpt54nanoE2eRoute
+  '/api/public/diagnose-gpt55': typeof ApiPublicDiagnoseGpt55Route
+  '/api/public/diagnose-gpt56sol': typeof ApiPublicDiagnoseGpt56solRoute
+  '/api/public/diagnose-nemotron': typeof ApiPublicDiagnoseNemotronRoute
+  '/api/public/diagnose-nemotron-nano-free': typeof ApiPublicDiagnoseNemotronNanoFreeRoute
+  '/api/public/diagnose-nemotron-super': typeof ApiPublicDiagnoseNemotronSuperRoute
+  '/api/public/diagnose-nemotron-ultra': typeof ApiPublicDiagnoseNemotronUltraRoute
   '/api/public/github-callback': typeof ApiPublicGithubCallbackRoute
+  '/api/public/list-models': typeof ApiPublicListModelsRoute
+  '/api/public/razorpay-webhook': typeof ApiPublicRazorpayWebhookRoute
+  '/api/public/test-models': typeof ApiPublicTestModelsRoute
+  '/api/public/verify-models': typeof ApiPublicVerifyModelsRoute
+  '/workspaces/$tool/activity': typeof WorkspacesToolActivityRoute
+  '/workspaces/$tool/blueprint': typeof WorkspacesToolBlueprintRoute
+  '/workspaces/$tool/files': typeof WorkspacesToolFilesRoute
+  '/workspaces/$tool/tasks': typeof WorkspacesToolTasksRoute
   '/api/public/honeypots/admin': typeof ApiPublicHoneypotsAdminRoute
   '/api/public/honeypots/env': typeof ApiPublicHoneypotsEnvRoute
   '/api/public/honeypots/git-config': typeof ApiPublicHoneypotsGitConfigRoute
   '/api/public/honeypots/phpmyadmin': typeof ApiPublicHoneypotsPhpmyadminRoute
   '/api/public/honeypots/wp-login': typeof ApiPublicHoneypotsWpLoginRoute
+  '/api/public/workflow/$id': typeof ApiPublicWorkflowIdRoute
   '/api/public/honeypots/token/$token': typeof ApiPublicHoneypotsTokenTokenRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
-  '/agent-test': typeof AgentTestRoute
   '/agents': typeof AgentsRoute
   '/auth': typeof AuthRoute
+  '/changelog': typeof ChangelogRoute
+  '/computer': typeof ComputerRoute
   '/diagnostics': typeof DiagnosticsRoute
   '/docs': typeof DocsRoute
   '/download': typeof DownloadRoute
   '/files': typeof FilesRoute
   '/help': typeof HelpRoute
   '/history': typeof HistoryRoute
+  '/integrations': typeof IntegrationsRoute
+  '/model-test': typeof ModelTestRoute
   '/premium': typeof PremiumRoute
   '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
   '/terms': typeof TermsRoute
+  '/workflows': typeof WorkflowsRouteWithChildren
+  '/workspaces': typeof WorkspacesRouteWithChildren
   '/api/ai-pool-status': typeof ApiAiPoolStatusRoute
   '/api/ai-stream': typeof ApiAiStreamRoute
   '/api/generate-image': typeof ApiGenerateImageRoute
-  '/workspaces/$tool': typeof WorkspacesToolRoute
+  '/workflows/$id': typeof WorkflowsIdRoute
+  '/workspaces/$tool': typeof WorkspacesToolRouteWithChildren
+  '/blog/': typeof BlogIndexRoute
   '/workspaces/': typeof WorkspacesIndexRoute
+  '/api/public/cloud-compute': typeof ApiPublicCloudComputeRoute
+  '/api/public/diagnose-claude5sonnet': typeof ApiPublicDiagnoseClaude5sonnetRoute
+  '/api/public/diagnose-claudeopus46': typeof ApiPublicDiagnoseClaudeopus46Route
+  '/api/public/diagnose-claudesonnet46': typeof ApiPublicDiagnoseClaudesonnet46Route
+  '/api/public/diagnose-deepseek-v4': typeof ApiPublicDiagnoseDeepseekV4Route
+  '/api/public/diagnose-deepseekv4flash': typeof ApiPublicDiagnoseDeepseekv4flashRoute
+  '/api/public/diagnose-glm52': typeof ApiPublicDiagnoseGlm52Route
+  '/api/public/diagnose-gpt53codex': typeof ApiPublicDiagnoseGpt53codexRoute
+  '/api/public/diagnose-gpt54mini': typeof ApiPublicDiagnoseGpt54miniRoute
+  '/api/public/diagnose-gpt54nano': typeof ApiPublicDiagnoseGpt54nanoRoute
+  '/api/public/diagnose-gpt54nano-e2e': typeof ApiPublicDiagnoseGpt54nanoE2eRoute
+  '/api/public/diagnose-gpt55': typeof ApiPublicDiagnoseGpt55Route
+  '/api/public/diagnose-gpt56sol': typeof ApiPublicDiagnoseGpt56solRoute
+  '/api/public/diagnose-nemotron': typeof ApiPublicDiagnoseNemotronRoute
+  '/api/public/diagnose-nemotron-nano-free': typeof ApiPublicDiagnoseNemotronNanoFreeRoute
+  '/api/public/diagnose-nemotron-super': typeof ApiPublicDiagnoseNemotronSuperRoute
+  '/api/public/diagnose-nemotron-ultra': typeof ApiPublicDiagnoseNemotronUltraRoute
   '/api/public/github-callback': typeof ApiPublicGithubCallbackRoute
+  '/api/public/list-models': typeof ApiPublicListModelsRoute
+  '/api/public/razorpay-webhook': typeof ApiPublicRazorpayWebhookRoute
+  '/api/public/test-models': typeof ApiPublicTestModelsRoute
+  '/api/public/verify-models': typeof ApiPublicVerifyModelsRoute
+  '/workspaces/$tool/activity': typeof WorkspacesToolActivityRoute
+  '/workspaces/$tool/blueprint': typeof WorkspacesToolBlueprintRoute
+  '/workspaces/$tool/files': typeof WorkspacesToolFilesRoute
+  '/workspaces/$tool/tasks': typeof WorkspacesToolTasksRoute
   '/api/public/honeypots/admin': typeof ApiPublicHoneypotsAdminRoute
   '/api/public/honeypots/env': typeof ApiPublicHoneypotsEnvRoute
   '/api/public/honeypots/git-config': typeof ApiPublicHoneypotsGitConfigRoute
   '/api/public/honeypots/phpmyadmin': typeof ApiPublicHoneypotsPhpmyadminRoute
   '/api/public/honeypots/wp-login': typeof ApiPublicHoneypotsWpLoginRoute
+  '/api/public/workflow/$id': typeof ApiPublicWorkflowIdRoute
   '/api/public/honeypots/token/$token': typeof ApiPublicHoneypotsTokenTokenRoute
 }
 export interface FileRouteTypes {
@@ -270,118 +581,242 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
-    | '/agent-test'
     | '/agents'
     | '/auth'
+    | '/changelog'
+    | '/computer'
     | '/diagnostics'
     | '/docs'
     | '/download'
     | '/files'
     | '/help'
     | '/history'
+    | '/integrations'
+    | '/model-test'
     | '/premium'
     | '/privacy'
     | '/settings'
     | '/terms'
+    | '/workflows'
+    | '/workspaces'
     | '/api/ai-pool-status'
     | '/api/ai-stream'
     | '/api/generate-image'
+    | '/workflows/$id'
     | '/workspaces/$tool'
+    | '/blog/'
     | '/workspaces/'
+    | '/api/public/cloud-compute'
+    | '/api/public/diagnose-claude5sonnet'
+    | '/api/public/diagnose-claudeopus46'
+    | '/api/public/diagnose-claudesonnet46'
+    | '/api/public/diagnose-deepseek-v4'
+    | '/api/public/diagnose-deepseekv4flash'
+    | '/api/public/diagnose-glm52'
+    | '/api/public/diagnose-gpt53codex'
+    | '/api/public/diagnose-gpt54mini'
+    | '/api/public/diagnose-gpt54nano'
+    | '/api/public/diagnose-gpt54nano-e2e'
+    | '/api/public/diagnose-gpt55'
+    | '/api/public/diagnose-gpt56sol'
+    | '/api/public/diagnose-nemotron'
+    | '/api/public/diagnose-nemotron-nano-free'
+    | '/api/public/diagnose-nemotron-super'
+    | '/api/public/diagnose-nemotron-ultra'
     | '/api/public/github-callback'
+    | '/api/public/list-models'
+    | '/api/public/razorpay-webhook'
+    | '/api/public/test-models'
+    | '/api/public/verify-models'
+    | '/workspaces/$tool/activity'
+    | '/workspaces/$tool/blueprint'
+    | '/workspaces/$tool/files'
+    | '/workspaces/$tool/tasks'
     | '/api/public/honeypots/admin'
     | '/api/public/honeypots/env'
     | '/api/public/honeypots/git-config'
     | '/api/public/honeypots/phpmyadmin'
     | '/api/public/honeypots/wp-login'
+    | '/api/public/workflow/$id'
     | '/api/public/honeypots/token/$token'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/admin'
-    | '/agent-test'
     | '/agents'
     | '/auth'
+    | '/changelog'
+    | '/computer'
     | '/diagnostics'
     | '/docs'
     | '/download'
     | '/files'
     | '/help'
     | '/history'
+    | '/integrations'
+    | '/model-test'
     | '/premium'
     | '/privacy'
     | '/settings'
     | '/terms'
+    | '/workflows'
     | '/api/ai-pool-status'
     | '/api/ai-stream'
     | '/api/generate-image'
+    | '/workflows/$id'
     | '/workspaces/$tool'
+    | '/blog'
     | '/workspaces'
+    | '/api/public/cloud-compute'
+    | '/api/public/diagnose-claude5sonnet'
+    | '/api/public/diagnose-claudeopus46'
+    | '/api/public/diagnose-claudesonnet46'
+    | '/api/public/diagnose-deepseek-v4'
+    | '/api/public/diagnose-deepseekv4flash'
+    | '/api/public/diagnose-glm52'
+    | '/api/public/diagnose-gpt53codex'
+    | '/api/public/diagnose-gpt54mini'
+    | '/api/public/diagnose-gpt54nano'
+    | '/api/public/diagnose-gpt54nano-e2e'
+    | '/api/public/diagnose-gpt55'
+    | '/api/public/diagnose-gpt56sol'
+    | '/api/public/diagnose-nemotron'
+    | '/api/public/diagnose-nemotron-nano-free'
+    | '/api/public/diagnose-nemotron-super'
+    | '/api/public/diagnose-nemotron-ultra'
     | '/api/public/github-callback'
+    | '/api/public/list-models'
+    | '/api/public/razorpay-webhook'
+    | '/api/public/test-models'
+    | '/api/public/verify-models'
+    | '/workspaces/$tool/activity'
+    | '/workspaces/$tool/blueprint'
+    | '/workspaces/$tool/files'
+    | '/workspaces/$tool/tasks'
     | '/api/public/honeypots/admin'
     | '/api/public/honeypots/env'
     | '/api/public/honeypots/git-config'
     | '/api/public/honeypots/phpmyadmin'
     | '/api/public/honeypots/wp-login'
+    | '/api/public/workflow/$id'
     | '/api/public/honeypots/token/$token'
   id:
     | '__root__'
     | '/'
     | '/admin'
-    | '/agent-test'
     | '/agents'
     | '/auth'
+    | '/changelog'
+    | '/computer'
     | '/diagnostics'
     | '/docs'
     | '/download'
     | '/files'
     | '/help'
     | '/history'
+    | '/integrations'
+    | '/model-test'
     | '/premium'
     | '/privacy'
     | '/settings'
     | '/terms'
+    | '/workflows'
+    | '/workspaces'
     | '/api/ai-pool-status'
     | '/api/ai-stream'
     | '/api/generate-image'
+    | '/workflows/$id'
     | '/workspaces/$tool'
+    | '/blog/'
     | '/workspaces/'
+    | '/api/public/cloud-compute'
+    | '/api/public/diagnose-claude5sonnet'
+    | '/api/public/diagnose-claudeopus46'
+    | '/api/public/diagnose-claudesonnet46'
+    | '/api/public/diagnose-deepseek-v4'
+    | '/api/public/diagnose-deepseekv4flash'
+    | '/api/public/diagnose-glm52'
+    | '/api/public/diagnose-gpt53codex'
+    | '/api/public/diagnose-gpt54mini'
+    | '/api/public/diagnose-gpt54nano'
+    | '/api/public/diagnose-gpt54nano-e2e'
+    | '/api/public/diagnose-gpt55'
+    | '/api/public/diagnose-gpt56sol'
+    | '/api/public/diagnose-nemotron'
+    | '/api/public/diagnose-nemotron-nano-free'
+    | '/api/public/diagnose-nemotron-super'
+    | '/api/public/diagnose-nemotron-ultra'
     | '/api/public/github-callback'
+    | '/api/public/list-models'
+    | '/api/public/razorpay-webhook'
+    | '/api/public/test-models'
+    | '/api/public/verify-models'
+    | '/workspaces/$tool/activity'
+    | '/workspaces/$tool/blueprint'
+    | '/workspaces/$tool/files'
+    | '/workspaces/$tool/tasks'
     | '/api/public/honeypots/admin'
     | '/api/public/honeypots/env'
     | '/api/public/honeypots/git-config'
     | '/api/public/honeypots/phpmyadmin'
     | '/api/public/honeypots/wp-login'
+    | '/api/public/workflow/$id'
     | '/api/public/honeypots/token/$token'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
-  AgentTestRoute: typeof AgentTestRoute
   AgentsRoute: typeof AgentsRoute
   AuthRoute: typeof AuthRoute
+  ChangelogRoute: typeof ChangelogRoute
+  ComputerRoute: typeof ComputerRoute
   DiagnosticsRoute: typeof DiagnosticsRoute
   DocsRoute: typeof DocsRoute
   DownloadRoute: typeof DownloadRoute
   FilesRoute: typeof FilesRoute
   HelpRoute: typeof HelpRoute
   HistoryRoute: typeof HistoryRoute
+  IntegrationsRoute: typeof IntegrationsRoute
+  ModelTestRoute: typeof ModelTestRoute
   PremiumRoute: typeof PremiumRoute
   PrivacyRoute: typeof PrivacyRoute
   SettingsRoute: typeof SettingsRoute
   TermsRoute: typeof TermsRoute
+  WorkflowsRoute: typeof WorkflowsRouteWithChildren
+  WorkspacesRoute: typeof WorkspacesRouteWithChildren
   ApiAiPoolStatusRoute: typeof ApiAiPoolStatusRoute
   ApiAiStreamRoute: typeof ApiAiStreamRoute
   ApiGenerateImageRoute: typeof ApiGenerateImageRoute
-  WorkspacesToolRoute: typeof WorkspacesToolRoute
-  WorkspacesIndexRoute: typeof WorkspacesIndexRoute
+  BlogIndexRoute: typeof BlogIndexRoute
+  ApiPublicCloudComputeRoute: typeof ApiPublicCloudComputeRoute
+  ApiPublicDiagnoseClaude5sonnetRoute: typeof ApiPublicDiagnoseClaude5sonnetRoute
+  ApiPublicDiagnoseClaudeopus46Route: typeof ApiPublicDiagnoseClaudeopus46Route
+  ApiPublicDiagnoseClaudesonnet46Route: typeof ApiPublicDiagnoseClaudesonnet46Route
+  ApiPublicDiagnoseDeepseekV4Route: typeof ApiPublicDiagnoseDeepseekV4Route
+  ApiPublicDiagnoseDeepseekv4flashRoute: typeof ApiPublicDiagnoseDeepseekv4flashRoute
+  ApiPublicDiagnoseGlm52Route: typeof ApiPublicDiagnoseGlm52Route
+  ApiPublicDiagnoseGpt53codexRoute: typeof ApiPublicDiagnoseGpt53codexRoute
+  ApiPublicDiagnoseGpt54miniRoute: typeof ApiPublicDiagnoseGpt54miniRoute
+  ApiPublicDiagnoseGpt54nanoRoute: typeof ApiPublicDiagnoseGpt54nanoRoute
+  ApiPublicDiagnoseGpt54nanoE2eRoute: typeof ApiPublicDiagnoseGpt54nanoE2eRoute
+  ApiPublicDiagnoseGpt55Route: typeof ApiPublicDiagnoseGpt55Route
+  ApiPublicDiagnoseGpt56solRoute: typeof ApiPublicDiagnoseGpt56solRoute
+  ApiPublicDiagnoseNemotronRoute: typeof ApiPublicDiagnoseNemotronRoute
+  ApiPublicDiagnoseNemotronNanoFreeRoute: typeof ApiPublicDiagnoseNemotronNanoFreeRoute
+  ApiPublicDiagnoseNemotronSuperRoute: typeof ApiPublicDiagnoseNemotronSuperRoute
+  ApiPublicDiagnoseNemotronUltraRoute: typeof ApiPublicDiagnoseNemotronUltraRoute
   ApiPublicGithubCallbackRoute: typeof ApiPublicGithubCallbackRoute
+  ApiPublicListModelsRoute: typeof ApiPublicListModelsRoute
+  ApiPublicRazorpayWebhookRoute: typeof ApiPublicRazorpayWebhookRoute
+  ApiPublicTestModelsRoute: typeof ApiPublicTestModelsRoute
+  ApiPublicVerifyModelsRoute: typeof ApiPublicVerifyModelsRoute
   ApiPublicHoneypotsAdminRoute: typeof ApiPublicHoneypotsAdminRoute
   ApiPublicHoneypotsEnvRoute: typeof ApiPublicHoneypotsEnvRoute
   ApiPublicHoneypotsGitConfigRoute: typeof ApiPublicHoneypotsGitConfigRoute
   ApiPublicHoneypotsPhpmyadminRoute: typeof ApiPublicHoneypotsPhpmyadminRoute
   ApiPublicHoneypotsWpLoginRoute: typeof ApiPublicHoneypotsWpLoginRoute
+  ApiPublicWorkflowIdRoute: typeof ApiPublicWorkflowIdRoute
   ApiPublicHoneypotsTokenTokenRoute: typeof ApiPublicHoneypotsTokenTokenRoute
 }
 
@@ -401,13 +836,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/agent-test': {
-      id: '/agent-test'
-      path: '/agent-test'
-      fullPath: '/agent-test'
-      preLoaderRoute: typeof AgentTestRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/agents': {
       id: '/agents'
       path: '/agents'
@@ -420,6 +848,20 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/changelog': {
+      id: '/changelog'
+      path: '/changelog'
+      fullPath: '/changelog'
+      preLoaderRoute: typeof ChangelogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/computer': {
+      id: '/computer'
+      path: '/computer'
+      fullPath: '/computer'
+      preLoaderRoute: typeof ComputerRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/diagnostics': {
@@ -464,6 +906,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HistoryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/integrations': {
+      id: '/integrations'
+      path: '/integrations'
+      fullPath: '/integrations'
+      preLoaderRoute: typeof IntegrationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/model-test': {
+      id: '/model-test'
+      path: '/model-test'
+      fullPath: '/model-test'
+      preLoaderRoute: typeof ModelTestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/premium': {
       id: '/premium'
       path: '/premium'
@@ -492,6 +948,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/workflows': {
+      id: '/workflows'
+      path: '/workflows'
+      fullPath: '/workflows'
+      preLoaderRoute: typeof WorkflowsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/workspaces': {
+      id: '/workspaces'
+      path: '/workspaces'
+      fullPath: '/workspaces'
+      preLoaderRoute: typeof WorkspacesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/ai-pool-status': {
       id: '/api/ai-pool-status'
       path: '/api/ai-pool-status'
@@ -513,18 +983,151 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiGenerateImageRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/blog/': {
+      id: '/blog/'
+      path: '/blog'
+      fullPath: '/blog/'
+      preLoaderRoute: typeof BlogIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/workflows/$id': {
+      id: '/workflows/$id'
+      path: '/$id'
+      fullPath: '/workflows/$id'
+      preLoaderRoute: typeof WorkflowsIdRouteImport
+      parentRoute: typeof WorkflowsRoute
+    }
     '/workspaces/': {
       id: '/workspaces/'
-      path: '/workspaces'
+      path: '/'
       fullPath: '/workspaces/'
       preLoaderRoute: typeof WorkspacesIndexRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof WorkspacesRoute
     }
     '/workspaces/$tool': {
       id: '/workspaces/$tool'
-      path: '/workspaces/$tool'
+      path: '/$tool'
       fullPath: '/workspaces/$tool'
       preLoaderRoute: typeof WorkspacesToolRouteImport
+      parentRoute: typeof WorkspacesRoute
+    }
+    '/api/public/cloud-compute': {
+      id: '/api/public/cloud-compute'
+      path: '/api/public/cloud-compute'
+      fullPath: '/api/public/cloud-compute'
+      preLoaderRoute: typeof ApiPublicCloudComputeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/diagnose-claude5sonnet': {
+      id: '/api/public/diagnose-claude5sonnet'
+      path: '/api/public/diagnose-claude5sonnet'
+      fullPath: '/api/public/diagnose-claude5sonnet'
+      preLoaderRoute: typeof ApiPublicDiagnoseClaude5sonnetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/diagnose-claudeopus46': {
+      id: '/api/public/diagnose-claudeopus46'
+      path: '/api/public/diagnose-claudeopus46'
+      fullPath: '/api/public/diagnose-claudeopus46'
+      preLoaderRoute: typeof ApiPublicDiagnoseClaudeopus46RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/diagnose-claudesonnet46': {
+      id: '/api/public/diagnose-claudesonnet46'
+      path: '/api/public/diagnose-claudesonnet46'
+      fullPath: '/api/public/diagnose-claudesonnet46'
+      preLoaderRoute: typeof ApiPublicDiagnoseClaudesonnet46RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/diagnose-deepseek-v4': {
+      id: '/api/public/diagnose-deepseek-v4'
+      path: '/api/public/diagnose-deepseek-v4'
+      fullPath: '/api/public/diagnose-deepseek-v4'
+      preLoaderRoute: typeof ApiPublicDiagnoseDeepseekV4RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/diagnose-deepseekv4flash': {
+      id: '/api/public/diagnose-deepseekv4flash'
+      path: '/api/public/diagnose-deepseekv4flash'
+      fullPath: '/api/public/diagnose-deepseekv4flash'
+      preLoaderRoute: typeof ApiPublicDiagnoseDeepseekv4flashRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/diagnose-glm52': {
+      id: '/api/public/diagnose-glm52'
+      path: '/api/public/diagnose-glm52'
+      fullPath: '/api/public/diagnose-glm52'
+      preLoaderRoute: typeof ApiPublicDiagnoseGlm52RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/diagnose-gpt53codex': {
+      id: '/api/public/diagnose-gpt53codex'
+      path: '/api/public/diagnose-gpt53codex'
+      fullPath: '/api/public/diagnose-gpt53codex'
+      preLoaderRoute: typeof ApiPublicDiagnoseGpt53codexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/diagnose-gpt54mini': {
+      id: '/api/public/diagnose-gpt54mini'
+      path: '/api/public/diagnose-gpt54mini'
+      fullPath: '/api/public/diagnose-gpt54mini'
+      preLoaderRoute: typeof ApiPublicDiagnoseGpt54miniRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/diagnose-gpt54nano': {
+      id: '/api/public/diagnose-gpt54nano'
+      path: '/api/public/diagnose-gpt54nano'
+      fullPath: '/api/public/diagnose-gpt54nano'
+      preLoaderRoute: typeof ApiPublicDiagnoseGpt54nanoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/diagnose-gpt54nano-e2e': {
+      id: '/api/public/diagnose-gpt54nano-e2e'
+      path: '/api/public/diagnose-gpt54nano-e2e'
+      fullPath: '/api/public/diagnose-gpt54nano-e2e'
+      preLoaderRoute: typeof ApiPublicDiagnoseGpt54nanoE2eRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/diagnose-gpt55': {
+      id: '/api/public/diagnose-gpt55'
+      path: '/api/public/diagnose-gpt55'
+      fullPath: '/api/public/diagnose-gpt55'
+      preLoaderRoute: typeof ApiPublicDiagnoseGpt55RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/diagnose-gpt56sol': {
+      id: '/api/public/diagnose-gpt56sol'
+      path: '/api/public/diagnose-gpt56sol'
+      fullPath: '/api/public/diagnose-gpt56sol'
+      preLoaderRoute: typeof ApiPublicDiagnoseGpt56solRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/diagnose-nemotron': {
+      id: '/api/public/diagnose-nemotron'
+      path: '/api/public/diagnose-nemotron'
+      fullPath: '/api/public/diagnose-nemotron'
+      preLoaderRoute: typeof ApiPublicDiagnoseNemotronRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/diagnose-nemotron-nano-free': {
+      id: '/api/public/diagnose-nemotron-nano-free'
+      path: '/api/public/diagnose-nemotron-nano-free'
+      fullPath: '/api/public/diagnose-nemotron-nano-free'
+      preLoaderRoute: typeof ApiPublicDiagnoseNemotronNanoFreeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/diagnose-nemotron-super': {
+      id: '/api/public/diagnose-nemotron-super'
+      path: '/api/public/diagnose-nemotron-super'
+      fullPath: '/api/public/diagnose-nemotron-super'
+      preLoaderRoute: typeof ApiPublicDiagnoseNemotronSuperRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/diagnose-nemotron-ultra': {
+      id: '/api/public/diagnose-nemotron-ultra'
+      path: '/api/public/diagnose-nemotron-ultra'
+      fullPath: '/api/public/diagnose-nemotron-ultra'
+      preLoaderRoute: typeof ApiPublicDiagnoseNemotronUltraRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/github-callback': {
@@ -533,6 +1136,62 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/public/github-callback'
       preLoaderRoute: typeof ApiPublicGithubCallbackRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/api/public/list-models': {
+      id: '/api/public/list-models'
+      path: '/api/public/list-models'
+      fullPath: '/api/public/list-models'
+      preLoaderRoute: typeof ApiPublicListModelsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/razorpay-webhook': {
+      id: '/api/public/razorpay-webhook'
+      path: '/api/public/razorpay-webhook'
+      fullPath: '/api/public/razorpay-webhook'
+      preLoaderRoute: typeof ApiPublicRazorpayWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/test-models': {
+      id: '/api/public/test-models'
+      path: '/api/public/test-models'
+      fullPath: '/api/public/test-models'
+      preLoaderRoute: typeof ApiPublicTestModelsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/verify-models': {
+      id: '/api/public/verify-models'
+      path: '/api/public/verify-models'
+      fullPath: '/api/public/verify-models'
+      preLoaderRoute: typeof ApiPublicVerifyModelsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/workspaces/$tool/activity': {
+      id: '/workspaces/$tool/activity'
+      path: '/activity'
+      fullPath: '/workspaces/$tool/activity'
+      preLoaderRoute: typeof WorkspacesToolActivityRouteImport
+      parentRoute: typeof WorkspacesToolRoute
+    }
+    '/workspaces/$tool/blueprint': {
+      id: '/workspaces/$tool/blueprint'
+      path: '/blueprint'
+      fullPath: '/workspaces/$tool/blueprint'
+      preLoaderRoute: typeof WorkspacesToolBlueprintRouteImport
+      parentRoute: typeof WorkspacesToolRoute
+    }
+    '/workspaces/$tool/files': {
+      id: '/workspaces/$tool/files'
+      path: '/files'
+      fullPath: '/workspaces/$tool/files'
+      preLoaderRoute: typeof WorkspacesToolFilesRouteImport
+      parentRoute: typeof WorkspacesToolRoute
+    }
+    '/workspaces/$tool/tasks': {
+      id: '/workspaces/$tool/tasks'
+      path: '/tasks'
+      fullPath: '/workspaces/$tool/tasks'
+      preLoaderRoute: typeof WorkspacesToolTasksRouteImport
+      parentRoute: typeof WorkspacesToolRoute
     }
     '/api/public/honeypots/admin': {
       id: '/api/public/honeypots/admin'
@@ -569,6 +1228,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHoneypotsWpLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/workflow/$id': {
+      id: '/api/public/workflow/$id'
+      path: '/api/public/workflow/$id'
+      fullPath: '/api/public/workflow/$id'
+      preLoaderRoute: typeof ApiPublicWorkflowIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/honeypots/token/$token': {
       id: '/api/public/honeypots/token/$token'
       path: '/api/public/honeypots/token/$token'
@@ -579,35 +1245,116 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface WorkflowsRouteChildren {
+  WorkflowsIdRoute: typeof WorkflowsIdRoute
+}
+
+const WorkflowsRouteChildren: WorkflowsRouteChildren = {
+  WorkflowsIdRoute: WorkflowsIdRoute,
+}
+
+const WorkflowsRouteWithChildren = WorkflowsRoute._addFileChildren(
+  WorkflowsRouteChildren,
+)
+
+interface WorkspacesToolRouteChildren {
+  WorkspacesToolActivityRoute: typeof WorkspacesToolActivityRoute
+  WorkspacesToolBlueprintRoute: typeof WorkspacesToolBlueprintRoute
+  WorkspacesToolFilesRoute: typeof WorkspacesToolFilesRoute
+  WorkspacesToolTasksRoute: typeof WorkspacesToolTasksRoute
+}
+
+const WorkspacesToolRouteChildren: WorkspacesToolRouteChildren = {
+  WorkspacesToolActivityRoute: WorkspacesToolActivityRoute,
+  WorkspacesToolBlueprintRoute: WorkspacesToolBlueprintRoute,
+  WorkspacesToolFilesRoute: WorkspacesToolFilesRoute,
+  WorkspacesToolTasksRoute: WorkspacesToolTasksRoute,
+}
+
+const WorkspacesToolRouteWithChildren = WorkspacesToolRoute._addFileChildren(
+  WorkspacesToolRouteChildren,
+)
+
+interface WorkspacesRouteChildren {
+  WorkspacesToolRoute: typeof WorkspacesToolRouteWithChildren
+  WorkspacesIndexRoute: typeof WorkspacesIndexRoute
+}
+
+const WorkspacesRouteChildren: WorkspacesRouteChildren = {
+  WorkspacesToolRoute: WorkspacesToolRouteWithChildren,
+  WorkspacesIndexRoute: WorkspacesIndexRoute,
+}
+
+const WorkspacesRouteWithChildren = WorkspacesRoute._addFileChildren(
+  WorkspacesRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
-  AgentTestRoute: AgentTestRoute,
   AgentsRoute: AgentsRoute,
   AuthRoute: AuthRoute,
+  ChangelogRoute: ChangelogRoute,
+  ComputerRoute: ComputerRoute,
   DiagnosticsRoute: DiagnosticsRoute,
   DocsRoute: DocsRoute,
   DownloadRoute: DownloadRoute,
   FilesRoute: FilesRoute,
   HelpRoute: HelpRoute,
   HistoryRoute: HistoryRoute,
+  IntegrationsRoute: IntegrationsRoute,
+  ModelTestRoute: ModelTestRoute,
   PremiumRoute: PremiumRoute,
   PrivacyRoute: PrivacyRoute,
   SettingsRoute: SettingsRoute,
   TermsRoute: TermsRoute,
+  WorkflowsRoute: WorkflowsRouteWithChildren,
+  WorkspacesRoute: WorkspacesRouteWithChildren,
   ApiAiPoolStatusRoute: ApiAiPoolStatusRoute,
   ApiAiStreamRoute: ApiAiStreamRoute,
   ApiGenerateImageRoute: ApiGenerateImageRoute,
-  WorkspacesToolRoute: WorkspacesToolRoute,
-  WorkspacesIndexRoute: WorkspacesIndexRoute,
+  BlogIndexRoute: BlogIndexRoute,
+  ApiPublicCloudComputeRoute: ApiPublicCloudComputeRoute,
+  ApiPublicDiagnoseClaude5sonnetRoute: ApiPublicDiagnoseClaude5sonnetRoute,
+  ApiPublicDiagnoseClaudeopus46Route: ApiPublicDiagnoseClaudeopus46Route,
+  ApiPublicDiagnoseClaudesonnet46Route: ApiPublicDiagnoseClaudesonnet46Route,
+  ApiPublicDiagnoseDeepseekV4Route: ApiPublicDiagnoseDeepseekV4Route,
+  ApiPublicDiagnoseDeepseekv4flashRoute: ApiPublicDiagnoseDeepseekv4flashRoute,
+  ApiPublicDiagnoseGlm52Route: ApiPublicDiagnoseGlm52Route,
+  ApiPublicDiagnoseGpt53codexRoute: ApiPublicDiagnoseGpt53codexRoute,
+  ApiPublicDiagnoseGpt54miniRoute: ApiPublicDiagnoseGpt54miniRoute,
+  ApiPublicDiagnoseGpt54nanoRoute: ApiPublicDiagnoseGpt54nanoRoute,
+  ApiPublicDiagnoseGpt54nanoE2eRoute: ApiPublicDiagnoseGpt54nanoE2eRoute,
+  ApiPublicDiagnoseGpt55Route: ApiPublicDiagnoseGpt55Route,
+  ApiPublicDiagnoseGpt56solRoute: ApiPublicDiagnoseGpt56solRoute,
+  ApiPublicDiagnoseNemotronRoute: ApiPublicDiagnoseNemotronRoute,
+  ApiPublicDiagnoseNemotronNanoFreeRoute:
+    ApiPublicDiagnoseNemotronNanoFreeRoute,
+  ApiPublicDiagnoseNemotronSuperRoute: ApiPublicDiagnoseNemotronSuperRoute,
+  ApiPublicDiagnoseNemotronUltraRoute: ApiPublicDiagnoseNemotronUltraRoute,
   ApiPublicGithubCallbackRoute: ApiPublicGithubCallbackRoute,
+  ApiPublicListModelsRoute: ApiPublicListModelsRoute,
+  ApiPublicRazorpayWebhookRoute: ApiPublicRazorpayWebhookRoute,
+  ApiPublicTestModelsRoute: ApiPublicTestModelsRoute,
+  ApiPublicVerifyModelsRoute: ApiPublicVerifyModelsRoute,
   ApiPublicHoneypotsAdminRoute: ApiPublicHoneypotsAdminRoute,
   ApiPublicHoneypotsEnvRoute: ApiPublicHoneypotsEnvRoute,
   ApiPublicHoneypotsGitConfigRoute: ApiPublicHoneypotsGitConfigRoute,
   ApiPublicHoneypotsPhpmyadminRoute: ApiPublicHoneypotsPhpmyadminRoute,
   ApiPublicHoneypotsWpLoginRoute: ApiPublicHoneypotsWpLoginRoute,
+  ApiPublicWorkflowIdRoute: ApiPublicWorkflowIdRoute,
   ApiPublicHoneypotsTokenTokenRoute: ApiPublicHoneypotsTokenTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

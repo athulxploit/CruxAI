@@ -18,6 +18,7 @@ export interface Profile {
   status: "active" | "suspended" | "banned";
   messages_used: number;
   storage_used_bytes: number;
+  allow_data_collection: boolean;
 }
 
 interface AuthCtx {

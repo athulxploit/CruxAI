@@ -1,9 +1,9 @@
-import { Bell, Plus, Search, LogOut, Ghost } from "lucide-react";
+import { Bell, Plus, Search, LogOut, Ghost, Menu } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { store, useApp } from "@/lib/app-store";
 import { useIncognito } from "@/lib/incognito";
-import { getAgent } from "@/lib/agents";
+
 import { useAuth } from "@/lib/auth-context";
 import { MobileSidebarTrigger } from "./sidebar";
 import { PlanBadge } from "./plan-badge";
@@ -33,7 +33,7 @@ interface Notification {
 
 export function TopBar() {
   const navigate = useNavigate();
-  const agent = getAgent(useApp((s) => s.agent));
+  // Legacy agent reference removed.
   const { profile, user, signOut } = useAuth();
   const [notifs, setNotifs] = useState<Notification[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -122,26 +122,29 @@ export function TopBar() {
   return (
     <header className="h-14 shrink-0 border-b border-border bg-background/80 backdrop-blur flex items-center justify-between px-4 md:px-6">
       <div className="flex items-center gap-2 text-[13px] text-muted-foreground min-w-0">
-        <MobileSidebarTrigger />
-        <span className="text-foreground/90 font-medium truncate">{agent.name}</span>
+        <div className="md:hidden flex items-center gap-1.5">
+          <MobileSidebarTrigger />
+          <span className="text-border">·</span>
+        </div>
+        <span className="text-foreground/90 font-medium truncate">Metrixcom</span>
         {incognito && (
-          <span className="inline-flex items-center gap-1 rounded-full border border-border bg-secondary px-2 py-0.5 text-[11px] text-foreground/80">
-            <Ghost className="h-3 w-3" /> Incognito
+          <span className="inline-flex items-center gap-1 rounded-full border border-border bg-secondary px-2 py-0.5 text-[11px] text-foreground/80 shrink-0">
+            <Ghost className="h-3 w-3" /> <span className="hidden xs:inline">Incognito</span>
           </span>
         )}
         <span className="text-border hidden sm:inline">·</span>
-        <span className="hidden sm:inline truncate">{agent.tagline}</span>
+        <span className="hidden sm:inline truncate">Metrixcom Engine</span>
       </div>
 
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-0.5 md:gap-1">
         <DropdownMenu open={searchOpen} onOpenChange={setSearchOpen}>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-muted-foreground hover:text-foreground">
+            <Button variant="ghost" size="sm" className="h-8 w-8 md:w-auto md:px-3 md:gap-1.5 text-muted-foreground hover:text-foreground">
               <Search className="h-4 w-4" />
-              <span className="hidden sm:inline text-[12.5px]">Search</span>
+              <span className="hidden md:inline text-[12.5px]">Search</span>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-80 p-2">
+          <DropdownMenuContent align="end" className="w-80 p-2 duration-150 ease-out">
             <input
               autoFocus
               value={searchQ}
@@ -149,7 +152,7 @@ export function TopBar() {
               placeholder="Search chats…"
               className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-[13px] focus:outline-none focus:border-border-strong"
             />
-            <div className="mt-2 max-h-64 overflow-y-auto">
+            <div className="mt-2 max-h-64 overflow-y-auto overflow-x-hidden -webkit-overflow-scrolling-touch min-h-0">
               {chats
                 .filter((c) => c.title.toLowerCase().includes(searchQ.toLowerCase()))
                 .slice(0, 10)
@@ -180,7 +183,7 @@ export function TopBar() {
           size="icon"
           aria-label={incognito ? "Turn off incognito mode" : "Turn on incognito mode"}
           title={incognito ? "Incognito on — this chat isn't saved" : "Incognito mode"}
-          className={`h-8 w-8 ${incognito ? "text-foreground bg-secondary" : "text-muted-foreground hover:text-foreground"}`}
+          className={`h-8 w-8 shrink-0 ${incognito ? "text-foreground bg-secondary" : "text-muted-foreground hover:text-foreground"}`}
           onClick={() => {
             const next = !incognito;
             store.setIncognito(next);
@@ -194,7 +197,7 @@ export function TopBar() {
         <Button
           variant="ghost"
           size="sm"
-          className="h-8 gap-1.5 text-muted-foreground hover:text-foreground"
+          className="h-8 gap-1.5 text-muted-foreground hover:text-foreground shrink-0"
           onClick={() => {
             store.newChat();
             navigate({ to: "/" });
@@ -213,7 +216,7 @@ export function TopBar() {
               )}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-80">
+          <DropdownMenuContent align="end" className="w-80 duration-150 ease-out">
             <div className="flex items-center justify-between px-2 py-1.5">
               <DropdownMenuLabel className="p-0">Notifications</DropdownMenuLabel>
               {unread > 0 && (
@@ -226,7 +229,7 @@ export function TopBar() {
               )}
             </div>
             <DropdownMenuSeparator />
-            <div className="max-h-72 overflow-y-auto">
+            <div className="max-h-72 overflow-y-auto overflow-x-hidden -webkit-overflow-scrolling-touch min-h-0">
               {notifs.length === 0 ? (
                 <div className="text-[12.5px] text-muted-foreground px-3 py-6 text-center">
                   You're all caught up.
@@ -259,7 +262,7 @@ export function TopBar() {
               initials
             )}
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuContent align="end" className="w-48 duration-150 ease-out">
             <DropdownMenuLabel className="font-normal">
               <div className="text-[13px] font-medium truncate">{displayName}</div>
               <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">

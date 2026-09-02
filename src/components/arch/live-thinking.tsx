@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useApp } from "@/lib/app-store";
-import { Brain, ChevronDown, Loader2 } from "lucide-react";
+import { Brain, ChevronDown, Loader2, Check } from "lucide-react";
 
 function formatElapsed(ms: number): string {
   if (ms < 1000) return `${Math.max(0, Math.round(ms / 100) * 100) / 1000}s`;
@@ -49,34 +49,39 @@ export function LiveThinkingBar() {
 
   return (
     <div className="mx-auto w-full max-w-3xl px-3 sm:px-4">
-      <div className="mb-2 rounded-2xl border border-border bg-surface/80 backdrop-blur-sm shadow-sm overflow-hidden">
+      <div className="mb-2 rounded-2xl border border-border bg-surface/80 backdrop-blur-md shadow-elegant overflow-hidden">
         <button
           onClick={() => setOpen((o) => !o)}
-          className="w-full flex items-center gap-2 px-3 py-2 text-[12.5px] text-foreground/90 hover:bg-surface-elevated/60 transition-colors"
+          className="w-full flex items-center gap-2 px-3.5 py-2.5 text-[13px] text-foreground/90 hover:bg-surface-elevated/60 transition-colors"
         >
           {pending.pending ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
           ) : (
             <Brain className="h-3.5 w-3.5 text-primary" />
           )}
-          <span className="font-medium arch-shimmer">
-            Thinking… {formatElapsed(elapsed)}
+          <span className="font-semibold arch-shimmer tracking-tight">
+            Metrixcom Engine: Orchestrating… {formatElapsed(elapsed)}
           </span>
           <ChevronDown
-            className={`ml-auto h-3.5 w-3.5 text-muted-foreground transition-transform ${
+            className={`ml-auto h-3.5 w-3.5 text-muted-foreground transition-transform duration-300 ${
               open ? "rotate-180" : ""
             }`}
           />
         </button>
         {open && (
-          <div className="px-3 pb-3 pt-1 border-t border-border">
-            <div
-              ref={(el) => {
-                if (el) el.scrollTop = el.scrollHeight;
-              }}
-              className="whitespace-pre-wrap text-[12.5px] leading-relaxed text-muted-foreground italic max-h-[42vh] overflow-y-auto"
-            >
-              {text || "…"}
+          <div className="px-3.5 pb-3.5 pt-1 border-t border-border/50">
+            <div className="text-[12.5px] leading-relaxed text-muted-foreground/80 space-y-2 py-1 font-serif italic">
+              <div className="flex items-center gap-2.5">
+                <Check className="h-3 w-3 text-emerald-500/80" />
+                <span>Analyzing request context and intent</span>
+              </div>
+              <div className="flex items-center gap-2.5">
+                <div className="h-1.5 w-1.5 rounded-full bg-primary/40 animate-pulse" />
+                <span>Selecting optimized model chain and specialized modules</span>
+              </div>
+              <div className="flex items-center gap-2.5 opacity-60 pl-5.5 text-[11.5px]">
+                Processing via internal Metrixcom architecture...
+              </div>
             </div>
           </div>
         )}

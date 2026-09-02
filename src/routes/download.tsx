@@ -9,8 +9,12 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/download")({
   head: () => ({
     meta: [
-      { title: "Download Metrixcom — Install on Desktop & Mobile" },
-      { name: "description", content: "Install Metrixcom as a native-feeling app on Windows, macOS, Linux, Android, and iOS." },
+      { title: "Download Metrixcom — Desktop & Mobile" },
+      { name: "description", content: "Install Metrixcom as a native app on Windows, macOS, Linux, Android, and iOS for a faster, focused workspace experience." },
+      { property: "og:title", content: "Download Metrixcom" },
+      { property: "og:description", content: "Get the native Metrixcom app for all your devices." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: DownloadPage,

@@ -24,7 +24,8 @@ export type WorkspaceId =
   | "jwt-inspector"
   | "password-generator"
   | "subnet-calc"
-  | "cipher-lab";
+  | "cipher-lab"
+  | "automation-lab";
 
 export type WorkspaceCategory = "coding" | "security";
 
@@ -61,6 +62,7 @@ export const WORKSPACES: Workspace[] = [
   { id: "password-generator", icon: "🎲", title: "Password Generator", tag: "Cipher-1", blurb: "Cryptographically secure passwords and passphrases with live entropy.", category: "security" },
   { id: "subnet-calc", icon: "🌐", title: "Subnet Calculator", tag: "Network", blurb: "IPv4 CIDR: network, broadcast, mask, host range, usable count.", category: "security" },
   { id: "cipher-lab", icon: "🔐", title: "Classical Cipher Lab", tag: "CryptoEdu", blurb: "Caesar/ROT13/XOR/Atbash for CTF-style education — never for real secrets.", category: "security" },
+  { id: "automation-lab", icon: "🔄", title: "Automation Engine", tag: "Workflows", blurb: "Visual node-based workflow builder (n8n-style) to orchestrate tasks, APIs, and AI actions.", category: "coding" },
 ];
 
 export const WORKSPACE_DISCLAIMER =
@@ -111,4 +113,6 @@ export const WORKSPACE_PROMPT: Record<WorkspaceId, (ctx: string) => string> = {
     `Act as a network engineer. Review this IPv4 plan: subnet sizing, waste, growth headroom, VLSM opportunities, and security-group / route-table implications for a typical cloud VPC.\n\n${ctx}`,
   "cipher-lab": (ctx) =>
     `Act as a defensive cryptography reviewer. Given this classical cipher exercise, explain why it is educational only, discuss what modern algorithms replace it (AES-GCM, ChaCha20-Poly1305), and outline correct key/IV handling.\n\n${ctx}`,
+  "automation-lab": (ctx) =>
+    `Act as a workflow automation architect (n8n/Zapier expert). Review this node-based workflow design for efficiency, error handling, rate-limiting, and security. Suggest missing triggers, condition branches, and retry strategies. Provide a JSON-like representation of the optimized workflow.\n\n${ctx}`,
 };

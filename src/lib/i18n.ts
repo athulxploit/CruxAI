@@ -7,7 +7,14 @@ const resources = {
   "en-US": {
     translation: {
       newChat: "New Chat",
+      expandSidebar: "Expand sidebar",
+      collapseSidebar: "Collapse sidebar",
       chatHistory: "Chat History",
+      computer: "Computer",
+      workspaces: "Workspaces",
+      workflows: "Workflows",
+
+      integrations: "Integrations",
       files: "Files",
       agents: "Agents",
       settings: "Settings",
